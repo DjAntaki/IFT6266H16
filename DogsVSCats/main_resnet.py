@@ -23,9 +23,9 @@ from blocks.extensions.monitoring import (DataStreamMonitoring,
 from blocks.monitoring import aggregation
 from blocks.extensions.saveload import Checkpoint
 from blocks_extras.extensions.plot import Plot
-from blocks.graph import ComputationGraph
 
-def load_dataset1(batch_size, input_size=(150,150), test=True):
+
+def load_dataset1(batch_size, input_size=(150,150), test=False):
 
     from fuel.datasets.dogs_vs_cats import DogsVsCats
     from fuel.streams import DataStream
@@ -41,7 +41,7 @@ def load_dataset1(batch_size, input_size=(150,150), test=True):
         test = DogsVsCats(('test',),subset=slice(0,10))
     else :
         train = DogsVsCats(('train',)) 
-        valid = DogsVsCats(('train',)) 
+        valid = DogsVsCats(('train',),subset=slice(0, 1)) 
         test = DogsVsCats(('test',))
 
 
@@ -72,24 +72,45 @@ def load_dataset1(batch_size, input_size=(150,150), test=True):
     return train_stream, valid_stream, test_stream
 
 
-def get_resnet_config(depth=1,image_size=(150,150),num_filters=8):
+def get_resnet_config(depth=16,image_size=(150,150),num_filters=32):
     assert depth>=0
     assert num_filters>0
-    config = {}
-    config['depth'] = depth
-    config['num_filters'] = num_filters
-    config['image_size'] = image_size
-    return config
+    config1 = {}
+    config1['label'] = str(depth)+'-deep resnet'
+    config1['depth'] = depth
+    config1['num_filters'] = num_filters
+    config1['image_size'] = image_size
+    return config1
 
-def get_experiment_config(num_epochs=3, learning_rate=0.05,batch_size=2,num_batches=None):
-    config = {}
+def get_test_resnet_config(label='test_resnet',depth=1,image_size=(150,150),num_filters=8):
+    assert depth>=0
+    assert num_filters>0
+    config1 = {}
+    config1['label'] = label
+    config1['depth'] = depth
+    config1['num_filters'] = num_filters
+    config1['image_size'] = image_size
+    return config1
+
+def get_experiment_config(num_epochs=150, learning_rate=0.05,batch_size=8,num_batches=None):
+    config1 = {}
     assert num_epochs>0
-    config['num_epochs'] = num_epochs
-    config['batch_size'] = batch_size
-    config['num_batches'] = num_batches
-    config['step_rule'] = None
-    config['learning_rate']= learning_rate
-    return config
+    config1['num_epochs'] = num_epochs
+    config1['batch_size'] = batch_size
+    config1['num_batches'] = num_batches
+    config1['step_rule'] = None
+    config1['learning_rate']= learning_rate
+    return config1
+
+def get_test_experiment_config(num_epochs=3, learning_rate=0.05,batch_size=2,num_batches=None):
+    config1 = {}
+    assert num_epochs>0
+    config1['num_epochs'] = num_epochs
+    config1['batch_size'] = batch_size
+    config1['num_batches'] = num_batches
+    config1['step_rule'] = None
+    config1['learning_rate']= learning_rate
+    return config1
 
 def get_info(network):
     """taken from aljaro's residual network main. See file deep_res.py"""
@@ -131,7 +152,7 @@ def get_info(network):
     print("  no. of parameters: %d" % num_params)
 
 def main():
-    return build_and_run("test_resnet1",get_resnet_config(),get_experiment_config())
+    return build_and_run("test_resnet1",get_test_resnet_config(),get_test_experiment_config())
 
 def build_and_run(save_to,modelconfig,experimentconfig):
     
@@ -196,7 +217,8 @@ def build_and_run(save_to,modelconfig,experimentconfig):
 #            name='error_rate')
 #    cg = ComputationGraph([cost])
 
-
+    print("Instantiation of live-plotting extention with bokeh-server...")
+    plot = Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://127.0.0.1:8007/')    
     # Load the dataset
     print("Loading data...")
     train_stream, valid_stream, test_stream = load_dataset1(experimentconfig['batch_size'])
@@ -219,7 +241,8 @@ def build_and_run(save_to,modelconfig,experimentconfig):
                   DataStreamMonitoring([loss, acc],test_stream,prefix="test", every_n_batches=2),
                   Checkpoint(save_to),
                   ProgressBar(),
-                  Plot('Test Graph', channels=[['train_mean','test_mean'], ['train_acc','test_acc']]), #'grad_norm'
+                  plot,
+                  #Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://localhost:8007'), #'grad_norm'
                   #       after_batch=True),
                   Printing(every_n_batches=1)]
 
