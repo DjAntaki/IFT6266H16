@@ -283,10 +283,10 @@ if __name__=='__main__':
         build_and_run("test_resnet2-adam",get_resnet_config(),get_experiment_config(step_rule=Adam))
     elif x == 3 :
         from blocks.algorithms import Momentum
-        build_and_run("test_resnet2-momentum",get_resnet_config(),get_experiment_config(step_rule=Momentum))
+        build_and_run("test_resnet3-momentum",get_resnet_config(),get_experiment_config(step_rule=Momentum))
     elif x == 4 :
         from blocks.algorithms import RMSProp
-        build_and_run("test_resnet2-adam",get_resnet_config(),get_experiment_config(step_rule=RMSProp))
+        build_and_run("test_resnet4-rmsprop",get_resnet_config(),get_experiment_config(step_rule=RMSProp))
  
 
 
