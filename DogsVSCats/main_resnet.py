@@ -61,16 +61,16 @@ def load_dataset1(batch_size, input_size=(150,150), test=False):
         iteration_scheme=ShuffledScheme(test.num_examples, batch_size)
     )
     
-    #ForceFloatX, to spare you from possible bugs
-    train_stream = ForceFloatX(train_stream)
-    valid_stream = ForceFloatX(valid_stream)
-    test_stream = ForceFloatX(test_stream)
- 
     #Reshaping procedure
     #Apply crop and resize to desired square shape
     train_stream = ScikitResize(train_stream, input_size, which_sources=('image_features',))
     valid_stream = ScikitResize(valid_stream, input_size, which_sources=('image_features',))
     test_stream = ScikitResize(test_stream, input_size, which_sources=('image_features',))
+
+    #ForceFloatX, to spare you from possible bugs
+    train_stream = ForceFloatX(train_stream)
+    valid_stream = ForceFloatX(valid_stream)
+    test_stream = ForceFloatX(test_stream)
 
     return train_stream, valid_stream, test_stream
 
