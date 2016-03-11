@@ -23,7 +23,7 @@ class ScikitResize(SourcewiseTransformer, ExpectsAxisLabels):
         super(ScikitResize, self).__init__(data_stream, **kwargs)
 
     def transform_source_batch(self, source, source_name):
-        print("a batch transform is starting")
+#        print("a batch transform is starting")
         self.verify_axis_labels(('batch', 'channel', 'height', 'width'),
                                 self.data_stream.axis_labels[source_name],
                                 source_name)
@@ -51,7 +51,7 @@ class ScikitResize(SourcewiseTransformer, ExpectsAxisLabels):
 
         if self.crop is True :
 
-            print("ex :::: ",example.shape)
+ #           print("ex :::: ",example.shape)
             image_height, image_width = example.shape[1:]
             crop_size = min((image_height, image_width))
 
