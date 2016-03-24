@@ -29,7 +29,7 @@ sys.setrecursionlimit(10000)
 
 # ##################### Build the neural network model #######################
 
-def build_cnn(input_var=None, image_size=(150,150), n=1, num_filters=64, output_size=2):
+def build_cnn(input_var=None, image_size=(150,150), n=1, num_filters=64, output_size=2, pool=True):
     # Setting up layers
     conv = lasagne.layers.Conv2DLayer
     #import lasagne.layers.dnn
@@ -91,10 +91,17 @@ def build_cnn(input_var=None, image_size=(150,150), n=1, num_filters=64, output_
     # First layer just a plain convLayer
     l1 = convLayer(
 	    l_in, num_filters=num_filters*4, filter_size=(3, 3)) # Filters multiplied by 4 as bottleneck returns such size
+    
 
+    if pool :
+        l1_pool = lasagne.layers.MaxPool2DLayer(l1,pool_size=3,stride=2) 
+        #l1_pool = lasagne.layers.Pool2DLayer(l1,pool_size=3,stride=2)
+    else :
+        l1_pool = l1
+    
     # Stacking bottlenecks and making residuals!
 
-    l1_bottlestack = bottlestack(l1, n=n-1, num_filters=num_filters) #Using the -1 to make it fit with size of the others
+    l1_bottlestack = bottlestack(l1_pool, n=n-1, num_filters=num_filters) #Using the -1 to make it fit with size of the others
     l1_residual = convLayer(l1_bottlestack, num_filters=num_filters*4*2, stride=(2, 2), nonlinearity=None) #Multiplying by 2 because of feature reduction by 2
 
     l2 = sumlayer([bottleneck(l1_bottlestack, num_filters=num_filters*2, stride=(2, 2)), l1_residual])

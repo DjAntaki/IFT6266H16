@@ -23,15 +23,15 @@ from blocks.extensions.monitoring import (DataStreamMonitoring,
 from blocks.monitoring import aggregation
 from blocks.extensions.saveload import Checkpoint
 #from blocks_extras.extensions.plot import Plot
+from fuel.transformers import Cast
 
-
-def load_dataset1(batch_size, input_size=(150,150), test=False):
+def load_dataset1(batch_size, input_size, test=False):
 
     from fuel.datasets.dogs_vs_cats import DogsVsCats
     from fuel.streams import DataStream
     from fuel.schemes import ShuffledScheme
     from fuel.transformers.image import RandomFixedSizeCrop
-    from fuel.transformers import Flatten, ForceFloatX
+    from fuel.transformers import Flatten #, ForceFloatX
     from ScikitResize import ScikitResize
     
     # Load the training set
@@ -68,14 +68,20 @@ def load_dataset1(batch_size, input_size=(150,150), test=False):
     test_stream = ScikitResize(test_stream, input_size, which_sources=('image_features',))
 
     #ForceFloatX, to spare you from possible bugs
-    train_stream = ForceFloatX(train_stream)
-    valid_stream = ForceFloatX(valid_stream)
-    test_stream = ForceFloatX(test_stream)
+    #train_stream = ForceFloatX(train_stream)
+    #valid_stream = ForceFloatX(valid_stream)
+    #test_stream = ForceFloatX(test_stream)
+
+    #Cast instead of forcefloatX
+    train_stream = Cast(train_stream, dtype='float32',which_sources=('image_features',))
+    valid_stream = Cast(valid_stream, dtype='float32',which_sources=('image_features',))
+    test_stream = Cast(test_stream, dtype='float32',which_sources=('image_features',))
+
 
     return train_stream, valid_stream, test_stream
 
 
-def get_resnet_config(depth=16,image_size=(150,150),num_filters=32):
+def get_resnet_config(depth=1,image_size=(150,150),num_filters=32):
     assert depth>=0
     assert num_filters>0
     config1 = {}
@@ -85,7 +91,7 @@ def get_resnet_config(depth=16,image_size=(150,150),num_filters=32):
     config1['image_size'] = image_size
     return config1
 
-def get_test_resnet_config(label='test_resnet',depth=1,image_size=(150,150),num_filters=8):
+def get_test_resnet_config(label='test_resnet',depth=3,image_size=(150,150),num_filters=8):
     assert depth>=0
     assert num_filters>0
     config1 = {}
@@ -95,7 +101,7 @@ def get_test_resnet_config(label='test_resnet',depth=1,image_size=(150,150),num_
     config1['image_size'] = image_size
     return config1
 
-def get_experiment_config(num_epochs=150, learning_rate=0.05,batch_size=8,num_batches=None,step_rule=None):
+def get_experiment_config(num_epochs=150, learning_rate=0.01,batch_size=32,num_batches=None,step_rule=None):
     config1 = {}
     assert num_epochs>0
     config1['num_epochs'] = num_epochs
@@ -103,6 +109,7 @@ def get_experiment_config(num_epochs=150, learning_rate=0.05,batch_size=8,num_ba
     config1['num_batches'] = num_batches
     config1['step_rule'] = step_rule
     config1['learning_rate']= learning_rate
+    config1['test'] = False
     return config1
 
 def get_test_experiment_config(num_epochs=3, learning_rate=0.05,batch_size=2,num_batches=None, step_rule=None):
@@ -114,6 +121,7 @@ def get_test_experiment_config(num_epochs=3, learning_rate=0.05,batch_size=2,num
     config1['num_batches'] = num_batches
     config1['step_rule'] = step_rule
     config1['learning_rate']= learning_rate
+    config1['test'] = True
     return config1
 
 def get_info(network):
@@ -156,11 +164,7 @@ def get_info(network):
     print("  no. of parameters: %d" % num_params)
 
 def test():
-    return build_and_run('testnet',get_test_resnet_config(),get_test_experiment_config())
-
-def main(label='resnet'):
-    return build_and_run(label,get_resnet_config(),get_experiment_config())
-
+    return build_and_run('testnet',get_test_resnet_config(depth=2),get_test_experiment_config())
 
 def build_and_run(save_to,modelconfig,experimentconfig):
     
@@ -231,7 +235,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     
     # Load the dataset
     print("Loading data...")
-    train_stream, valid_stream, test_stream = load_dataset1(experimentconfig['batch_size'],test=True)
+    train_stream, valid_stream, test_stream = load_dataset1(experimentconfig['batch_size'],image_size,test=experimentconfig['test'])
 
     if 'step_rule' in experimentconfig.keys() and not experimentconfig['step_rule'] is None :
         step_rule = experimentconfig['step_rule'](learning_rate=experimentconfig['learning_rate'])
@@ -256,7 +260,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
                               after_n_batches=experimentconfig['num_batches']),
                   TrainingDataMonitoring([loss, acc], prefix="train", every_n_batches=1),
                   DataStreamMonitoring([loss, acc],test_stream,prefix="test", every_n_batches=2),
-                  Checkpoint(save_to),
+                  Checkpoint(save_to,after_n_epochs=5),
                   ProgressBar(),
                   #Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://localhost:8007'), #'grad_norm'
                   #       after_batch=True),
@@ -278,18 +282,42 @@ if __name__=='__main__':
     print(sys.argv)
     x = int(sys.argv[1])
     
+    config = None 
+
+    if('--test' in sys.argv):
+        print("Retrieving test model config...")
+        config = get_test_resnet_config(depth=2) 
+        print("Retrieving test experiment config...")
+        expr = get_test_experiment_config()
+    else :
+        if '--testmodel' in sys.argv:
+            print("Retrieving test model config...") 
+            print("Aweille Kevin continue comme ça...")
+            config = get_test_resnet_config(depth=2,image_size=(50,50),num_filters=8)
+        else :
+            config = get_resnet_config(depth=3,image_size=(150,150),num_filters=32)
+ 
+        if '--testexperiment' in sys.argv:    
+            print("Retrieving test experiment config...") 
+            expr = get_test_experiment_config()
+        else :
+            expr = get_experiment_config() 
+
     if x == 0 :
         test()    
     elif x == 1 :
-        main()
+        build_and_run('resenet1.1-sgd',config,expr)
     elif x == 2:
         from blocks.algorithms import Adam
-        build_and_run("test_resnet2-adam",get_resnet_config(),get_experiment_config(step_rule=Adam))
+        expr['step_rule'] = Adam
+        build_and_run("resnet1.2-adam",config,expr)
     elif x == 3 :
         from blocks.algorithms import Momentum
-        build_and_run("test_resnet3-momentum",get_resnet_config(),get_experiment_config(step_rule=Momentum))
+        expr['step_rule'] = Momentum 
+        build_and_run("resnet1.3-momentum",config,expr)
     elif x == 4 :
         from blocks.algorithms import RMSProp
-        build_and_run("test_resnet4-rmsprop",get_resnet_config(),get_experiment_config(step_rule=RMSProp))
+        expr['step_rule'] = RMSProp
+        build_and_run("resnet1.4-rmsprop2",config,expr)
  
 
