@@ -20,8 +20,11 @@ from blocks.model import Model
 from blocks.extensions import FinishAfter, Timing, Printing, ProgressBar
 from blocks.extensions.monitoring import (DataStreamMonitoring,
                                           TrainingDataMonitoring)
+from blocks.extensions.predicates import OnLogRecord
 from blocks.monitoring import aggregation
 from blocks.extensions.saveload import Checkpoint
+from blocks.extensions.stopping import FinishIfNoImprovementAfter
+from blocks.extensions.training import TrackTheBest
 #from blocks_extras.extensions.plot import Plot
 from fuel.transformers import Cast
 
@@ -85,13 +88,13 @@ def get_resnet_config(depth=1,image_size=(150,150),num_filters=32):
     assert depth>=0
     assert num_filters>0
     config1 = {}
-    config1['label'] = str(depth)+'-deep resnet'
+    config1['label'] = str(depth)+'-bottledeep resnet'
     config1['depth'] = depth
     config1['num_filters'] = num_filters
     config1['image_size'] = image_size
     return config1
 
-def get_test_resnet_config(label='test_resnet',depth=3,image_size=(150,150),num_filters=8):
+def get_test_resnet_config(label='test_resnet',depth=1,image_size=(150,150),num_filters=8):
     assert depth>=0
     assert num_filters>0
     config1 = {}
@@ -112,7 +115,7 @@ def get_experiment_config(num_epochs=150, learning_rate=0.01,batch_size=32,num_b
     config1['test'] = False
     return config1
 
-def get_test_experiment_config(num_epochs=3, learning_rate=0.05,batch_size=2,num_batches=None, step_rule=None):
+def get_test_experiment_config(num_epochs=15, learning_rate=0.05,batch_size=10,num_batches=None, step_rule=None):
 
     config1 = {}
     assert num_epochs>0
@@ -163,9 +166,6 @@ def get_info(network):
     print("  total no. of layers: %d" % len(all_layers))
     print("  no. of parameters: %d" % num_params)
 
-def test():
-    return build_and_run('testnet',get_test_resnet_config(depth=2),get_test_experiment_config())
-
 def build_and_run(save_to,modelconfig,experimentconfig):
     
 
@@ -177,20 +177,25 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     input_var = T.tensor4('image_features')
     #target_var = T.ivector('targets')
     target_var = T.lmatrix('targets')
-    #target_vec = T.extra_ops.to_one_hot(target_var,2)
+    target_vec = T.extra_ops.to_one_hot(target_var,2)
 
     # Create neural network model (depending on first command line parameter)
     print("Building model and compiling functions...")
     network = build_cnn(input_var, image_size, n, num_filters)
     get_info(network)
     prediction = lasagne.layers.get_output(network)
+ #   print(prediction.shape.eval(np.ones(shape=(5,3,10,10))))
+ #   print(target_vec.eval(targets=[1,0,0,1]))
 
     print("Instanciation of loss function...")
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
-    loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten())
+ # le bon  loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten())
 #    loss = lasagne.objectives.categorical_crossentropy(prediction, target_vec)
+    loss = lasagne.objectives.squared_error(prediction,target_vec)
     loss = loss.mean()
+#    loss.name = 'x-ent_error'
+    loss.name = 'sqr_error'
     # We could add some weight decay as well here, see lasagne.regularization.
 
     # Create update expressions for training, i.e., how to modify the
@@ -254,17 +259,24 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     
 
     print("Initializing extensions...")
+    checkpoint = Checkpoint('best_'+save_to+'.pkl', after_training=False)
+    checkpoint.add_condition(['after_epoch'],
+                         predicate=OnLogRecord('test_acc_best_so_far'))
+
     #Defining extensions
     extensions = [Timing(),
                   FinishAfter(after_n_epochs=experimentconfig['num_epochs'],
                               after_n_batches=experimentconfig['num_batches']),
                   TrainingDataMonitoring([loss, acc], prefix="train", every_n_batches=1),
                   DataStreamMonitoring([loss, acc],test_stream,prefix="test", every_n_batches=2),
-                  Checkpoint(save_to,after_n_epochs=5),
+                  #Checkpoint(save_to,after_n_epochs=5),
                   ProgressBar(),
                   #Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://localhost:8007'), #'grad_norm'
                   #       after_batch=True),
-                  Printing(every_n_batches=1)]
+                  Printing(every_n_batches=1),
+                  TrackTheBest('test_acc'), #Keep best
+                  checkpoint,  #Save best
+                  FinishIfNoImprovementAfter('test_acc_best_so_far', epochs=10)] # Early-stopping
 
    # model = Model(ComputationGraph(network))
 
@@ -286,25 +298,28 @@ if __name__=='__main__':
 
     if('--test' in sys.argv):
         print("Retrieving test model config...")
-        config = get_test_resnet_config(depth=2) 
+        config = get_test_resnet_config(depth=1) 
         print("Retrieving test experiment config...")
         expr = get_test_experiment_config()
+        print("Aweille Kevin continue comme ça...")
     else :
         if '--testmodel' in sys.argv:
             print("Retrieving test model config...") 
-            print("Aweille Kevin continue comme ça...")
-            config = get_test_resnet_config(depth=2,image_size=(50,50),num_filters=8)
+            config = get_test_resnet_config(depth=1,image_size=(50,50),num_filters=8)
         else :
+            print("Retrieving default model config...")
             config = get_resnet_config(depth=3,image_size=(150,150),num_filters=32)
  
         if '--testexperiment' in sys.argv:    
             print("Retrieving test experiment config...") 
             expr = get_test_experiment_config()
         else :
+            print("Retrieving default experiment config...")
             expr = get_experiment_config() 
 
     if x == 0 :
-        test()    
+#        build_and_rund
+        pass    
     elif x == 1 :
         build_and_run('resenet1.1-sgd',config,expr)
     elif x == 2:

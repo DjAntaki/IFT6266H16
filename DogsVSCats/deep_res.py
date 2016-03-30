@@ -111,7 +111,7 @@ def build_cnn(input_var=None, image_size=(150,150), n=1, num_filters=64, output_
     l3 = sumlayer([bottleneck(l2_bottlestack, num_filters=num_filters*2*2, stride=(2, 2)), l2_residual])
     l3_bottlestack = bottlestack(l3, n=n, num_filters=num_filters*2*2)
 
-    # And, finally, the 10-unit output layer:
+    # And, finally, the output layer:
     network = lasagne.layers.DenseLayer(
             l3_bottlestack,
             num_units=output_size,
