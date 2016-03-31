@@ -7,7 +7,7 @@
 ###
 
 import numpy as np
-
+import itertools
 import theano
 from theano import tensor
 
@@ -92,7 +92,7 @@ def example4():
     dim=3
 
 #    gate_inputs = theano.function([x],x*4)
-    gate_inputs = Linear(input_dim=dim,output_dim=dim*4, name="linear",weights_init=initialization.Identity(), biases_init=Constant(0))
+    gate_inputs = Linear(input_dim=dim,output_dim=dim*4, name="linear",weights_init=initialization.Identity(), biases_init=Constant(2))
 
     lstm = LSTM(dim=dim,activation=Tanh(), weights_init=IsotropicGaussian(), biases_init=Constant(0))
     
@@ -109,11 +109,13 @@ def example4():
     
     f = theano.function([x], h)
     print(f(np.ones((dim, 1, dim), dtype=theano.config.floatX)))
+    print(f(np.ones((dim, 1, dim), dtype=theano.config.floatX)))
+    print(f(4*np.ones((dim, 1, dim), dtype=theano.config.floatX)))
  
     print("Good Job!")
 
 
-    lstm_output = 
+#    lstm_output = 
 
     #Initial State
     h0 = tensor.matrix('h0')
@@ -159,14 +161,14 @@ def example5():
 
     #Testing time
  
-    x_val = 0.1 * numpy.asarray(
+    x_val = 0.1 * np.asarray(
         list(itertools.permutations(range(4))),
         dtype=theano.config.floatX)
         
-    x_val = (numpy.ones((24, 4, 3), dtype=theano.config.floatX) *
+    x_val = (np.ones((24, 4, 3), dtype=theano.config.floatX) *
                   x_val[..., None])
                   
-    mask_val = numpy.ones((24, 4), dtype=theano.config.floatX)
+    mask_val = np.ones((24, 4), dtype=theano.config.floatX)
     mask_val[12:24, 3] = 0
 
     h_bidir = calc_bidir(x_val, mask_val)[0]
@@ -276,6 +278,7 @@ def example7():
      
 
 def test_square():
+    from blocks.bricks.cost import SquaredError
     x = tensor.tensor3()
     y = tensor.tensor3()
 

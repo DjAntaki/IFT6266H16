@@ -184,9 +184,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     network = build_cnn(input_var, image_size, n, num_filters)
     get_info(network)
     prediction = lasagne.layers.get_output(network)
- #   print(prediction.shape.eval(np.ones(shape=(5,3,10,10))))
- #   print(target_vec.eval(targets=[1,0,0,1]))
-
+ 
     print("Instanciation of loss function...")
     # Create a loss expression for training, i.e., a scalar objective we want
     # to minimize (for our multi-class problem, it is the cross-entropy loss):
@@ -268,15 +266,15 @@ def build_and_run(save_to,modelconfig,experimentconfig):
                   FinishAfter(after_n_epochs=experimentconfig['num_epochs'],
                               after_n_batches=experimentconfig['num_batches']),
                   TrainingDataMonitoring([loss, acc], prefix="train", every_n_batches=1),
-                  DataStreamMonitoring([loss, acc],test_stream,prefix="test", every_n_batches=2),
+                  DataStreamMonitoring([loss, acc],valid_stream,prefix="valid", every_n_batches=2),
                   #Checkpoint(save_to,after_n_epochs=5),
                   ProgressBar(),
                   #Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://localhost:8007'), #'grad_norm'
                   #       after_batch=True),
                   Printing(every_n_batches=1),
-                  TrackTheBest('test_acc'), #Keep best
+                  TrackTheBest('valid_acc'), #Keep best
                   checkpoint,  #Save best
-                  FinishIfNoImprovementAfter('test_acc_best_so_far', epochs=10)] # Early-stopping
+                  FinishIfNoImprovementAfter('valid_acc_best_so_far', epochs=10)] # Early-stopping
 
    # model = Model(ComputationGraph(network))
 
