@@ -192,14 +192,15 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     loss = lasagne.objectives.squared_error(prediction,target_vec)
     loss = loss.mean()
 #    loss.name = 'x-ent_error'
-    loss.name = 'sqr_error'
+#    loss.name = 'sqr_error'
     layers = lasagne.layers.get_all_layers(network)
 
     #l1 and l2 regularization
-    layers = {x:0.1 for x in layers}
-    l1_penality = lasagne.regularization.regularize_layer_params_weighted(layers, lasagne.regularization.l2)
+    pondlayers = {x:0.1 for x in layers}
+    l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
     l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/3:], lasagne.regularization.l1) * 1e-4
     loss = loss + l1_penality + l2_penality
+    loss.name = 'reg_sqr_error'
 
     params = lasagne.layers.get_all_params(network, trainable=True)
 
