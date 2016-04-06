@@ -39,12 +39,12 @@ def load_dataset1(batch_size, input_size, test=False):
     
     # Load the training set
     if test :
-        train = DogsVsCats(('train',),subset=slice(0, 4)) 
-        valid = DogsVsCats(('train',),subset=slice(19996, 20000)) 
+        train = DogsVsCats(('train',),subset=slice(0, 200)) 
+        valid = DogsVsCats(('train',),subset=slice(19800, 20000)) 
         test = DogsVsCats(('test',),subset=slice(0,4))
     else :
-        train = DogsVsCats(('train',)) 
-        valid = DogsVsCats(('train',),subset=slice(0, 1)) 
+        train = DogsVsCats(('train',),subset=slice(0,22000)) 
+        valid = DogsVsCats(('train',),subset=slice(22000, 25000)) 
         test = DogsVsCats(('test',))
 
     #Generating stream
@@ -115,7 +115,7 @@ def get_experiment_config(num_epochs=150, learning_rate=0.01,batch_size=32,num_b
     config1['test'] = False
     return config1
 
-def get_test_experiment_config(num_epochs=15, learning_rate=0.05,batch_size=10,num_batches=None, step_rule=None):
+def get_test_experiment_config(num_epochs=15, learning_rate=0.05,batch_size=5,num_batches=None, step_rule=None):
 
     config1 = {}
     assert num_epochs>0
@@ -257,9 +257,9 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     
 
     print("Initializing extensions...")
-    checkpoint = Checkpoint('best_'+save_to+'.pkl', after_training=False)
+    checkpoint = Checkpoint('best_'+save_to+'.pkl')
     checkpoint.add_condition(['after_epoch'],
-                         predicate=OnLogRecord('test_acc_best_so_far'))
+                         predicate=OnLogRecord('valid_acc_best_so_far'))
 
     #Defining extensions
     extensions = [Timing(),
@@ -306,7 +306,7 @@ if __name__=='__main__':
             config = get_test_resnet_config(depth=1,image_size=(50,50),num_filters=8)
         else :
             print("Retrieving default model config...")
-            config = get_resnet_config(depth=3,image_size=(150,150),num_filters=32)
+            config = get_resnet_config(depth=1,image_size=(150,150),num_filters=8)
  
         if '--testexperiment' in sys.argv:    
             print("Retrieving test experiment config...") 
@@ -316,7 +316,7 @@ if __name__=='__main__':
             expr = get_experiment_config() 
 
     if x == 0 :
-#        build_and_rund
+        build_and_run('testsave1.0-sgd',config,expr)
         pass    
     elif x == 1 :
         build_and_run('resenet1.1-sgd',config,expr)
