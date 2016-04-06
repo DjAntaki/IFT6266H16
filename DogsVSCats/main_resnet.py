@@ -167,7 +167,7 @@ def get_info(network):
     print("  no. of parameters: %d" % num_params)
 
 def build_and_run(save_to,modelconfig,experimentconfig):
-    
+    """ part of this is adapted from lasagne tutorial""" 
 
     n, num_filters, image_size = modelconfig['depth'],modelconfig['num_filters'], modelconfig['image_size']
     
@@ -179,49 +179,36 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     target_var = T.lmatrix('targets')
     target_vec = T.extra_ops.to_one_hot(target_var,2)
 
-    # Create neural network model (depending on first command line parameter)
-    print("Building model and compiling functions...")
+    # Create residual net model
+    print("Building model...")
     network = build_cnn(input_var, image_size, n, num_filters)
     get_info(network)
     prediction = lasagne.layers.get_output(network)
- 
+
+    # Loss function -> The objective to minimize 
     print("Instanciation of loss function...")
-    # Create a loss expression for training, i.e., a scalar objective we want
-    # to minimize (for our multi-class problem, it is the cross-entropy loss):
- # le bon  loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten())
-#    loss = lasagne.objectives.categorical_crossentropy(prediction, target_vec)
+ 
+ #  loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten())
     loss = lasagne.objectives.squared_error(prediction,target_vec)
     loss = loss.mean()
 #    loss.name = 'x-ent_error'
     loss.name = 'sqr_error'
-    # We could add some weight decay as well here, see lasagne.regularization.
+    layers = lasagne.layers.get_all_layers(network)
 
-    # Create update expressions for training, i.e., how to modify the
-    # parameters at each training step. Here, we'll use Stochastic Gradient
-    # Descent (SGD) with Nesterov momentum, but Lasagne offers plenty more.
+    #l1 and l2 regularization
+    layers = {x:0.1 for x in layers}
+    l1_penality = lasagne.regularization.regularize_layer_params_weighted(layers, lasagne.regularization.l2)
+    l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/3:], lasagne.regularization.l1) * 1e-4
+    loss = loss + l1_penality + l2_penality
+
     params = lasagne.layers.get_all_params(network, trainable=True)
-    #updates = lasagne.updates.nesterov_momentum(loss, params, learning_rate=0.01, momentum=0.9)
 
-    # Create a loss expression for validation/testing. The crucial difference
-    # here is that we do a deterministic forward pass through the network,
-    # disabling dropout layers.
-    #test_prediction = lasagne.layers.get_output(network, deterministic=True)
-    #test_loss = lasagne.objectives.categorical_crossentropy(test_prediction,
-    #                                                        target_var)
-    #test_loss = test_loss.mean()
-    #test_loss.name = 'test_loss'
-    
-    # As a bonus, also create an expression for the classification accuracy:
+    #Accuracy    
     acc = T.mean(T.eq(T.argmax(prediction, axis=1), target_var.flatten()),dtype=theano.config.floatX)
  #   acc = T.mean(T.eq(T.argmax(prediction, axis=1), target_vec),dtype=theano.config.floatX)
     
     acc.name = 'acc'
     
-    #test_acc = T.mean(T.eq(T.argmax(test_prediction, axis=1), target_var),
-    #                  dtype=theano.config.floatX)
-    #test_acc.name = 'test_acc'
-#    return test_prediction, prediction, loss, params
-
     #cg = ComputationGraph(loss,parameters=params)
     #print(cg.variables)
 #    print(cg.params)
@@ -253,8 +240,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
 #        step_rule=RMSProp(learning_rate=experimentconfig['learning_rate']))
       #  step_rule=Momentum(learning_rate=experimentconfig['learning_rate']))
 
-    #grad_norm = aggregation.mean(algorithm.total_gradient_norm)
-    
+    #grad_norm = aggregation.mean(algorithm.total_gradient_norm)    
 
     print("Initializing extensions...")
     checkpoint = Checkpoint('best_'+save_to+'.pkl')
