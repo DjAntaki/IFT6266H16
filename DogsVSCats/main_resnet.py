@@ -97,7 +97,7 @@ def get_resnet_config(depth=1,image_size=(150,150),num_filters=32):
     config1['image_size'] = image_size
     return config1
 
-def get_config2(depth=1,image_size=(150,150),num_filters=32):
+def get_config2(depth=2,image_size=(128,128),num_filters=32):
     assert depth>=0
     assert num_filters>0
     config1 = {}
@@ -107,7 +107,7 @@ def get_config2(depth=1,image_size=(150,150),num_filters=32):
     config1['image_size'] = image_size
     return config1
 
-def get_test_resnet_config(label='test_resnet',depth=1,image_size=(150,150),num_filters=8):
+def get_test_resnet_config(label='test_resnet',depth=1,image_size=(128,128),num_filters=8):
     assert depth>=0
     assert num_filters>0
     config1 = {}
@@ -117,7 +117,7 @@ def get_test_resnet_config(label='test_resnet',depth=1,image_size=(150,150),num_
     config1['image_size'] = image_size
     return config1
 
-def get_experiment_config(num_epochs=150, learning_rate=0.01,batch_size=32,num_batches=None,step_rule=None):
+def get_experiment_config(num_epochs=200, learning_rate=0.025,batch_size=32,num_batches=None,step_rule=None):
     config1 = {}
     assert num_epochs>0
     config1['num_epochs'] = num_epochs
@@ -209,9 +209,9 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     layers = lasagne.layers.get_all_layers(network)
 
     #l1 and l2 regularization
-    pondlayers = {x:0.1 for x in layers}
+    pondlayers = {x:0.01 for x in layers}
     l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
-    l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/3:], lasagne.regularization.l1) * 1e-4
+    l2_penality = lasagne.regularization.regularize_layer_params(layers[:len(layers)/3], lasagne.regularization.l1) * 1e-4
     loss = loss + l1_penality + l2_penality
     loss.name = 'reg_sqr_error'
 
@@ -254,10 +254,10 @@ def build_and_run(save_to,modelconfig,experimentconfig):
 #        step_rule=RMSProp(learning_rate=experimentconfig['learning_rate']))
       #  step_rule=Momentum(learning_rate=experimentconfig['learning_rate']))
 
-    #grad_norm = aggregation.mean(algorithm.total_gradient_norm)    
+    grad_norm = aggregation.mean(algorithm.total_gradient_norm)    
 
     print("Initializing extensions...")
-    checkpoint = Checkpoint('best_'+save_to+'.pkl')
+    checkpoint = Checkpoint('models/best_'+save_to+'.pkl')
     checkpoint.add_condition(['after_epoch'],
                          predicate=OnLogRecord('valid_acc_best_so_far'))
 
@@ -265,16 +265,16 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     extensions = [Timing(),
                   FinishAfter(after_n_epochs=experimentconfig['num_epochs'],
                               after_n_batches=experimentconfig['num_batches']),
-                  TrainingDataMonitoring([loss, acc], prefix="train", every_n_batches=1),
-                  DataStreamMonitoring([loss, acc],valid_stream,prefix="valid", every_n_batches=2),
+                  TrainingDataMonitoring([loss, acc], prefix="train", after_n_epochs=1),
+                  DataStreamMonitoring([loss, acc, grad_norm],valid_stream,prefix="valid", after_n_epochs=1),
                   #Checkpoint(save_to,after_n_epochs=5),
                   ProgressBar(),
                   #Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://localhost:8007'), #'grad_norm'
                   #       after_batch=True),
-                  Printing(every_n_batches=1),
+                  Printing(every_n_epochs=1),
                   TrackTheBest('valid_acc'), #Keep best
                   checkpoint,  #Save best
-                  FinishIfNoImprovementAfter('valid_acc_best_so_far', epochs=10)] # Early-stopping
+                  FinishIfNoImprovementAfter('valid_acc_best_so_far', epochs=20)] # Early-stopping
 
    # model = Model(ComputationGraph(network))
 
@@ -306,7 +306,7 @@ if __name__=='__main__':
             config = get_test_resnet_config(depth=1,image_size=(50,50),num_filters=8)
         else :
             print("Retrieving default model config...")
-            config = get_resnet_config(depth=1,image_size=(150,150),num_filters=8)
+            config = get_resnet_config2(depth=1,num_filters=8)
  
         if '--testexperiment' in sys.argv:    
             print("Retrieving test experiment config...") 
