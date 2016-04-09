@@ -83,8 +83,21 @@ def load_dataset1(batch_size, input_size, test=False):
 
     return train_stream, valid_stream, test_stream
 
+def augment_data():
+    pass
+
 
 def get_resnet_config(depth=1,image_size=(150,150),num_filters=32):
+    assert depth>=0
+    assert num_filters>0
+    config1 = {}
+    config1['label'] = str(depth)+'-bottledeep resnet'
+    config1['depth'] = depth
+    config1['num_filters'] = num_filters
+    config1['image_size'] = image_size
+    return config1
+
+def get_config2(depth=1,image_size=(150,150),num_filters=32):
     assert depth>=0
     assert num_filters>0
     config1 = {}

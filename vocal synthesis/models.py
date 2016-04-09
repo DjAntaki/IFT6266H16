@@ -40,7 +40,7 @@ def add_lstm(input_dim, input_var):
 
     testing_init(linear)
     #linear.initialize()
-    testing_init(lstm.initialize())
+    default_init(lstm)
 
     h = linear.apply(input_var)
     return lstm.apply(h)
@@ -57,7 +57,9 @@ def getLSTMstack(input_dim, input_var, depth):
     
     next_input = input_var
     for i in range(depth):
-        next_input = add_lstm(input_dim,next_input)
+        print('a')
+        next_input, cells = add_lstm(input_dim,next_input)
+        print(next_input)
 
     net = add_softmax_layer(next_input, input_dim, 2)
     return net
@@ -76,7 +78,7 @@ def getBidir(input_dim,input_var):
     return net
 
 def getBidir2(input_dim,input_var):
-    """LSTM-based bidirectionnal"""
+    """ LSTM-based bidirectionnal """
     bidir = Bidirectional(weights_init=Orthogonal(),
                                prototype=LSTM(dim=input_dim, name='lstm'))
     #bidir.allocate()
@@ -90,16 +92,25 @@ def getBidir2(input_dim,input_var):
 def test():
     x = tensor.tensor3()
     b = getBidir(3,x)
-
     f = theano.function([x],b)
-
     print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+
 
 
 def test2():
     x = tensor.tensor3()
     b = getLSTMstack(3,x,5)
+    f = theano.function([x],b)
+    print(f(np.ones((1,1,4),dtype=theano.config.floatX)))
+
+def test3():
+    """ Not working"""
+    x = tensor.matrix()
+    b = getLSTMstack(2,x,5)
 
     f = theano.function([x],b)
 
-    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,3),dtype=theano.config.floatX)))

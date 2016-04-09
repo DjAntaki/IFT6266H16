@@ -1,70 +1,34 @@
-#wrapping python-speech-feature librairy with SourwiseTransformer and ExpectsAxisLabels from fuel.transformers
-
-
-
-import numpy
-
-from fuel.transformers import ExpectsAxisLabels, SourcewiseTransformer
+from fuel.transformers import Flatten
+from fuel.transformers.sequences import Window
+from fuel.transformers import Mapping, Batch, FilterSources, Merge, ForceFloatX
 import features
 
-class MFCC(SourcewiseTransformer, ExpectsAxisLabels):
-    """  """
-    def __init__(self, data_stream, winlen=10,winstep=5,numcep=13,
-          nfilt=26,nfft=256, appendEnergy=True, **kwargs):
-        self.winlen = winlen
-        self.winstep = winstep
-        self.nfilt=nfilt
-        self.nfft=nfft
-        self.numcep=numcep
-        
-#        self.lowfreq=0
-#        self.highfreq=None
-#        self.preemph=0.97,
-#        self.ceplifter=22
-#        self.appendEnergy=True
-        
-        kwargs.setdefault('produces_examples', data_stream.produces_examples)
-        kwargs.setdefault('axis_labels', data_stream.axis_labels)
-        super(MFCC, self).__init__(data_stream, **kwargs)
 
-    def transform_source_batch(self, source, source_name):
-        self.verify_axis_labels(('batch', 'time', 'feature'),
-                                self.data_stream.axis_labels[source_name],
-                                source_name)
+def mfcc(array,samplerate=16000, winlen=0.025,winstep=0.01,numcep=13, nfilt=26,nfft=256, appendEnergy=True):
+    array = array[0] # Because of FilterSources returns a list
+    feats = features.mfcc(array, samplerate, winlen, winstep, numcep, nfilt, nfft, appendEnergy = appendEnergy)
+    return [feats]
 
-        print(source.shape)
-        print('aaaa')
+def get_stream(source_window=4000, target_window=1000):
+    from fuel.datasets.youtube_audio import YouTubeAudio
+    data = YouTubeAudio('XqaJ2Ol5cC4')
+    train_stream = data.get_example_stream()
+    train_stream = ForceFloatX(train_stream)
+    window_stream = Window(0,source_window, target_window, overlapping=False, data_stream=train_stream)
+    source_stream = FilterSources(window_stream, sources=('features',))
+    feats_stream = Mapping(source_stream, mfcc)
+    targets_stream = FilterSources(window_stream, sources=('targets',))
+    targets_stream = Flatten(targets_stream)
+    stream = Merge((feats_stream,targets_stream),sources = ('features','targets'))
+    return stream
 
-        if isinstance(source, numpy.ndarray) and source.ndim == 3:
-
-            raise Exception
-        
-        elif all(isinstance(b, numpy.ndarray) and b.ndim == 2 for b in source):
-            return [self.transform_source_example(im, source_name)
-                    for im in source]
-        else:
-            raise ValueError("uninterpretable batch format; expected a list "
-                             "of arrays with ndim = 3, or an array with "
-                             "ndim = 4")
-
-    def transform_source_example(self, example, source_name):
-        self.verify_axis_labels(('time', 'feature'),
-                                self.data_stream.axis_labels[source_name],
-                                source_name)
-        
-        print(example.shape)
-
-
-        
-        if not isinstance(example, numpy.ndarray) or example.ndim != 2:
-            raise ValueError("uninterpretable example format; expected "
-                             "ndarray with ndim = 2")
-                
-
-
-        feats = features.mfcc(example, winlen = self.winlen,
-        winstep = self.winstep, nfilt=self.nfilt, nfft=self.nfft)
-
-        return feats
-
-
+#if __name__ == '__main__':
+#    from fuel.datasets.youtube_audio import YouTubeAudio
+#    data = YouTubeAudio('XqaJ2Ol5cC4')
+#    train_stream = data.get_example_stream()
+#    train_stream = ForceFloatX(train_stream)
+#    window_stream = Window(0,source_window, target_window, overlapping=False, data_stream=train_stream)
+#    source_stream = FilterSources(window_stream, sources=('features',))
+#    feats_stream = Mapping(source_stream, mfcc)
+#    targets_stream = FilterSources(window_stream, sources=('targets',))
+#    train_stream = Merge((feats_stream,targets_stream),sources = ('features','targets'))
