@@ -92,20 +92,29 @@ def getBidir2(input_dim,input_var):
 def test():
     x = tensor.tensor3()
     b = getBidir(3,x)
-
     f = theano.function([x],b)
+    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
 
-    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
-    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
-    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
-    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
 
 
 
 def test2():
     x = tensor.tensor3()
     b = getLSTMstack(3,x,5)
+    f = theano.function([x],b)
+    print(f(np.ones((1,1,4),dtype=theano.config.floatX)))
+
+def test3():
+    """ Not working"""
+    x = tensor.matrix()
+    b = getLSTMstack(2,x,5)
 
     f = theano.function([x],b)
 
-    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,3),dtype=theano.config.floatX)))

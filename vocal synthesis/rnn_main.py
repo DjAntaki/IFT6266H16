@@ -1,73 +1,76 @@
 
 #Work in progress. Not functionnal yet.
 
-
-import theano
-from theano import tensor
-
-from fuel.transformers.sequences import Window
-from fuel.streams import DataStream
-from fuel.schemes import SequentialScheme, ConstantScheme
-from MFCC import MFCC
-
-
+import MFCC
 import numpy as np
-from blocks.bricks.recurrent import BaseRecurrent, LSTM, Bidirectional, GatedRecurrent, SimpleRecurrent
-from blocks.initialization import IsotropicGaussian, Orthogonal, Constant
-from blocks.bricks import Tanh
+import theano
 
-from blocks.bricks.sequence_generators import (
-    SequenceGenerator, Readout, SoftmaxEmitter, LookupFeedback)
+from theano import tensor
+#from blocks.bricks.recurrent import BaseRecurrent, LSTM, Bidirectional, GatedRecurrent, SimpleRecurrent
+#from blocks.initialization import IsotropicGaussian, Orthogonal, Constant
+#from blocks.bricks import Tanh
 from blocks.graph import ComputationGraph
-from fuel.streams import DataStream
+from blocks.main_loop import MainLoop
 from blocks.algorithms import GradientDescent, Scale
 from blocks.monitoring import aggregation
-from blocks.extensions import FinishAfter, Printing, Timing
+from blocks.extensions import FinishAfter, Printing, Timing, ProgressBar
 from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.monitoring import TrainingDataMonitoring
-
 from blocks.bricks.cost import SquaredError
 
 def get_stream():
     from fuel.datasets.youtube_audio import YouTubeAudio
-    
-
     data = YouTubeAudio('XqaJ2Ol5cC4')
     stream = data.get_example_stream()
 
     return stream
 
-def getconfig(num_epochs=1,window_size=10,learning_rate=0.05,batch_size=64,num_batches=None):
+def get_test_expr_config():
     config = {}
-    config['num_epochs'] = num_epochs
-    config['window_size'] = window_size
-    config['learning_rate']= learning_rate
-    config['batch_size'] = batch_size
-    config['num_batches'] = num_batches
+    config['source_size'] = 4000
+    config['target_size'] = 1000
+    config['learning_rate']= 0.05
+ #   config['batch_size'] = 2
+    config['num_epochs'] = 10
+    config['num_batches'] = None
+    config['model'] = "LSTM4"
     return config
 
+def get_expr_config(num_epochs=300,source_size=4000, target_size=1000, learning_rate=0.05,batch_size=64,num_batches=None):
+    config = {}
+    config['source_size'] = window_size
+    config['target_size'] = target_size
+    config['learning_rate']= learning_rate
+#    config['batch_size'] = batch_size
+    config['num_epochs'] = num_epochs
+    config['num_batches'] = num_batches
+    config['model'] = "LSTM4"
+    return config
 
+def main_rnn(config):
 
-def main_rnn(model,config):
+    x = tensor.matrix('features')
+    y = tensor.vector('targets')
 
-    x = tensor.tensor3('x')
-    y = tensor.tensor3()
+    if config['model'][:-1] == 'LSTM':
+        from models import getLSTMstack
+        y_hat = getLSTMstack(input_dim=2, input_var=x, depth=int(config['model'][-1]))
+    else :
+        raise Exception("lolwut")
 
-    y_hat = model.apply(x)
+#    y_hat = model.apply(x)
 
     #Cost
-    #classification_error= MisclassificationRate().apply(T.argmax(),Y)
     cost = SquaredError().apply(y_hat ,y)
     #cost = CategoricalCrossEntropy().apply(T.flatten(),Y)
     cg = ComputationGraph(cost)
 
-    # Train with simple SGD
-    # TODO:Uses momentum_step
     algorithm = GradientDescent(
         cost=cost, parameters=cg.parameters,
         step_rule=Scale(learning_rate=config['learning_rate']))
 
 
+<<<<<<< HEAD
     #Data preparation
 
 
@@ -88,6 +91,10 @@ def main_rnn(model,config):
 
 
         #train_stream = Windows
+=======
+    #Getting the stream
+    train_stream = MFCC.get_stream(config['source_size'],config['target_size'])
+>>>>>>> 58546e76d1f4ad9a72bd9a2dd4030125fff2aa4d
 
     #Monitoring stuff
     extensions = [Timing(),
@@ -103,12 +110,13 @@ def main_rnn(model,config):
     main_loop = MainLoop(
         algorithm,
         train_stream,
-        model=model,
+ #       model=model,
         extensions=extensions)
 
     main_loop.run()
 
 if __name__ == '__main__':
+<<<<<<< HEAD
     pass
   #  window_size = 10
 
@@ -117,3 +125,6 @@ if __name__ == '__main__':
  #   model = getBidir(window_size)
 
 #    main_rnn(model, getconfig())
+=======
+    main_rnn(get_test_expr_config())
+>>>>>>> 58546e76d1f4ad9a72bd9a2dd4030125fff2aa4d

@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from deep_res import build_cnn
+from config import *
 
 from lasagne.layers import get_output, get_all_params
 from lasagne.objectives import squared_error, categorical_crossentropy
@@ -83,53 +84,9 @@ def load_dataset1(batch_size, input_size, test=False):
 
     return train_stream, valid_stream, test_stream
 
-def augment_dataset(data_stream):
-    """ Augment the data_stream in input"""
-
+def augment_data():
     pass
 
-def get_resnet_config(depth=1,image_size=(150,150),num_filters=32):
-    assert depth>=0
-    assert num_filters>0
-    config1 = {}
-    config1['label'] = str(depth)+'-bottledeep resnet'
-    config1['depth'] = depth
-    config1['num_filters'] = num_filters
-    config1['image_size'] = image_size
-    return config1
-
-def get_test_resnet_config(label='test_resnet',depth=1,image_size=(150,150),num_filters=8):
-    assert depth>=0
-    assert num_filters>0
-    config1 = {}
-    config1['label'] = label
-    config1['depth'] = depth
-    config1['num_filters'] = num_filters
-    config1['image_size'] = image_size
-    return config1
-
-def get_experiment_config(num_epochs=150, learning_rate=0.01,batch_size=32,num_batches=None,step_rule=None):
-    config1 = {}
-    assert num_epochs>0
-    config1['num_epochs'] = num_epochs
-    config1['batch_size'] = batch_size
-    config1['num_batches'] = num_batches
-    config1['step_rule'] = step_rule
-    config1['learning_rate']= learning_rate
-    config1['test'] = False
-    return config1
-
-def get_test_experiment_config(num_epochs=15, learning_rate=0.05,batch_size=5,num_batches=None, step_rule=None):
-
-    config1 = {}
-    assert num_epochs>0
-    config1['num_epochs'] = num_epochs
-    config1['batch_size'] = batch_size
-    config1['num_batches'] = num_batches
-    config1['step_rule'] = step_rule
-    config1['learning_rate']= learning_rate
-    config1['test'] = True
-    return config1
 
 def get_info(network):
     """taken from aljaro's residual network main. See file deep_res.py"""
@@ -196,14 +153,17 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     loss = lasagne.objectives.squared_error(prediction,target_vec)
     loss = loss.mean()
 #    loss.name = 'x-ent_error'
-    loss.name = 'sqr_error'
+#    loss.name = 'sqr_error'
     layers = lasagne.layers.get_all_layers(network)
 
     #l1 and l2 regularization
-    layers = {x:0.1 for x in layers}
-    l1_penality = lasagne.regularization.regularize_layer_params_weighted(layers, lasagne.regularization.l2)
-    l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/3:], lasagne.regularization.l1) * 1e-4
-    loss = loss + l1_penality + l2_penality
+    pondlayers = {x:0.01 for x in layers}
+    l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
+    l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/5:], lasagne.regularization.l1) * 1e-4
+    reg_loss = l1_penality + l2_penality
+    reg_loss.name = 'reg_penalty'
+    loss = loss + reg_loss
+    loss.name = 'reg_sqr_error'
 
     params = lasagne.layers.get_all_params(network, trainable=True)
 
@@ -229,8 +189,12 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     
     # Load the dataset
     print("Loading data...")
-    train_stream, valid_stream, test_stream = load_dataset1(experimentconfig['batch_size'],image_size,test=experimentconfig['test'])
+    if 'test' in experimentconfig.keys() :
+        train_stream, valid_stream, test_stream = load_dataset1(experimentconfig['batch_size'],image_size,test=True)
+    else :
+        train_stream, valid_stream, test_stream = load_dataset1(experimentconfig['batch_size'],image_size,test=True)
 
+    # Defining step rule and algorithm
     if 'step_rule' in experimentconfig.keys() and not experimentconfig['step_rule'] is None :
         step_rule = experimentconfig['step_rule'](learning_rate=experimentconfig['learning_rate'])
     else :
@@ -239,15 +203,13 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     algorithm = GradientDescent(
                 cost=loss, parameters=params,
                 step_rule=step_rule)
-       # step_rule=Scale(learning_rate=experimentconfig['learning_rate']))
-      #  step_rule=Adam(learning_rate=experimentconfig['learning_rate']))
-#        step_rule=RMSProp(learning_rate=experimentconfig['learning_rate']))
-      #  step_rule=Momentum(learning_rate=experimentconfig['learning_rate']))
 
-    #grad_norm = aggregation.mean(algorithm.total_gradient_norm)    
+    grad_norm = aggregation.mean(algorithm.total_gradient_norm)    
 
     print("Initializing extensions...")
-    checkpoint = Checkpoint('best_'+save_to+'.pkl')
+    checkpoint = Checkpoint('models/best_'+save_to+'.tar')
+  #  checkpoint.add_condition(['after_n_batches=25'],
+
     checkpoint.add_condition(['after_epoch'],
                          predicate=OnLogRecord('valid_acc_best_so_far'))
 
@@ -255,16 +217,16 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     extensions = [Timing(),
                   FinishAfter(after_n_epochs=experimentconfig['num_epochs'],
                               after_n_batches=experimentconfig['num_batches']),
-                  TrainingDataMonitoring([loss, acc], prefix="train", every_n_batches=1),
-                  DataStreamMonitoring([loss, acc],valid_stream,prefix="valid", every_n_batches=2),
+                  TrainingDataMonitoring([loss, acc, grad_norm, reg_loss], prefix="train", after_epoch=True), #after_n_epochs=1
+                  DataStreamMonitoring([loss, acc],valid_stream,prefix="valid", after_epoch=True), #after_n_epochs=1
                   #Checkpoint(save_to,after_n_epochs=5),
-                  ProgressBar(),
+                  #ProgressBar(),
                   #Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://localhost:8007'), #'grad_norm'
                   #       after_batch=True),
-                  Printing(every_n_batches=1),
+                  Printing(after_epoch=True),
                   TrackTheBest('valid_acc'), #Keep best
                   checkpoint,  #Save best
-                  FinishIfNoImprovementAfter('valid_acc_best_so_far', epochs=10)] # Early-stopping
+                  FinishIfNoImprovementAfter('valid_acc_best_so_far', epochs=5)] # Early-stopping
 
    # model = Model(ComputationGraph(network))
 
@@ -279,48 +241,45 @@ def build_and_run(save_to,modelconfig,experimentconfig):
 
 if __name__=='__main__':
     import sys
-    print(sys.argv)
-    x = int(sys.argv[1])
+    #Usage notice,
+    # [modelconfig] [experiment_config] [None|adam|Momentum|RMSProp]
+    # 
+    print("Arguments :"+ ' '.join(sys.argv))
     
-    config = None 
-
     if('--test' in sys.argv):
         print("Retrieving test model config...")
-        config = get_test_resnet_config(depth=1) 
+        model_config = get_model_config('test') 
         print("Retrieving test experiment config...")
-        expr = get_test_experiment_config()
+        expr_config = get_expr_config('test')
         print("Aweille Kevin continue comme ça...")
-    else :
-        if '--testmodel' in sys.argv:
-            print("Retrieving test model config...") 
-            config = get_test_resnet_config(depth=1,image_size=(50,50),num_filters=8)
-        else :
-            print("Retrieving default model config...")
-            config = get_resnet_config(depth=1,image_size=(150,150),num_filters=8)
- 
-        if '--testexperiment' in sys.argv:    
-            print("Retrieving test experiment config...") 
-            expr = get_test_experiment_config()
-        else :
-            print("Retrieving default experiment config...")
-            expr = get_experiment_config() 
+        label = 'test'
+    else :        
+        print("Retrieving test model config...")
+        model_config = get_model_config(sys.argv[1])
+        print("Retrieving test experiment config...")
+        expr_config = get_expr_config(sys.argv[2])
+        step = sys.argv[3]
+        label = sys.argv[1] + '_' + sys.argv[2] + '_'+sys.argv[3]
 
-    if x == 0 :
-        build_and_run('testsave1.0-sgd',config,expr)
-        pass    
-    elif x == 1 :
-        build_and_run('resenet1.1-sgd',config,expr)
-    elif x == 2:
-        from blocks.algorithms import Adam
-        expr['step_rule'] = Adam
-        build_and_run("resnet1.2-adam",config,expr)
-    elif x == 3 :
-        from blocks.algorithms import Momentum
-        expr['step_rule'] = Momentum 
-        build_and_run("resnet1.3-momentum",config,expr)
-    elif x == 4 :
-        from blocks.algorithms import RMSProp
-        expr['step_rule'] = RMSProp
-        build_and_run("resnet1.4-rmsprop2",config,expr)
+
+        if step == 'adam' :
+            from blocks.algorithms import Adam
+            expr_config['step_rule'] = Adam
+        elif step == 'None' :
+            from blocks.algorithms import Momentum
+            expr_config['step_rule'] = Momentum 
+        elif step == 'RMSProp' :
+            from blocks.algorithms import RMSProp
+            expr_config['step_rule'] = RMSProp
+        elif step == 'None':
+            expr_config['step_rule'] = None
+        else :
+            print("No step defined, using RMSProp.")
+            from blocks.algorithms import RMSProp
+            expr_config['step_rule'] = RMSProp
+
+
+    build_and_run(label,model_config,expr_config)
+
  
 
