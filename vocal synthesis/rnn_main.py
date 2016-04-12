@@ -70,31 +70,10 @@ def main_rnn(config):
         step_rule=Scale(learning_rate=config['learning_rate']))
 
 
-<<<<<<< HEAD
-    #Data preparation
 
-
-    #Generating stream
-    train_stream = get_stream()
-
-    #MFCC and NGrams transform
-   # train_stream = MFCC(train_stream)
-
-    train_stream = Window(1, config['window_size'], config['window_size'], True, train_stream)
-  #  source,target = 
-    for source, target in train_stream.get_epoch_iterator():
-        print(source, target)
-        source
-        print(source[0])
-        #MFCC(source)
-        #train(source, target)
-
-
-        #train_stream = Windows
-=======
     #Getting the stream
     train_stream = MFCC.get_stream(config['source_size'],config['target_size'])
->>>>>>> 58546e76d1f4ad9a72bd9a2dd4030125fff2aa4d
+
 
     #Monitoring stuff
     extensions = [Timing(),
@@ -116,15 +95,4 @@ def main_rnn(config):
     main_loop.run()
 
 if __name__ == '__main__':
-<<<<<<< HEAD
-    pass
-  #  window_size = 10
-
-  #  from models import getBidir
-
- #   model = getBidir(window_size)
-
-#    main_rnn(model, getconfig())
-=======
     main_rnn(get_test_expr_config())
->>>>>>> 58546e76d1f4ad9a72bd9a2dd4030125fff2aa4d
