@@ -159,7 +159,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     #l1 and l2 regularization
     pondlayers = {x:0.01 for x in layers}
     l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
-    l2_penality = lasagne.regularization.regularize_layer_params(layers[:len(layers)/3], lasagne.regularization.l1) * 1e-4
+    l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/5:], lasagne.regularization.l1) * 1e-4
     reg_loss = l1_penality + l2_penality
     reg_loss.name = 'reg_penalty'
     loss = loss + reg_loss
@@ -207,7 +207,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     grad_norm = aggregation.mean(algorithm.total_gradient_norm)    
 
     print("Initializing extensions...")
-    checkpoint = Checkpoint('models/best_'+save_to+'.pkl')
+    checkpoint = Checkpoint('models/best_'+save_to+'.tar')
   #  checkpoint.add_condition(['after_n_batches=25'],
 
     checkpoint.add_condition(['after_epoch'],
@@ -217,16 +217,16 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     extensions = [Timing(),
                   FinishAfter(after_n_epochs=experimentconfig['num_epochs'],
                               after_n_batches=experimentconfig['num_batches']),
-                  TrainingDataMonitoring([loss, acc, grad_norm, reg_loss], prefix="train", after_n_epochs=1),
-                  DataStreamMonitoring([loss, acc],valid_stream,prefix="valid", after_n_epochs=1),
+                  TrainingDataMonitoring([loss, acc, grad_norm, reg_loss], prefix="train", after_epoch=True), #after_n_epochs=1
+                  DataStreamMonitoring([loss, acc],valid_stream,prefix="valid", after_epoch=True), #after_n_epochs=1
                   #Checkpoint(save_to,after_n_epochs=5),
-                  ProgressBar(),
+                  #ProgressBar(),
                   #Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://localhost:8007'), #'grad_norm'
                   #       after_batch=True),
-                  Printing(every_n_epochs=1),
+                  Printing(after_epoch=True),
                   TrackTheBest('valid_acc'), #Keep best
                   checkpoint,  #Save best
-                  FinishIfNoImprovementAfter('valid_acc_best_so_far', epochs=10)] # Early-stopping
+                  FinishIfNoImprovementAfter('valid_acc_best_so_far', epochs=5)] # Early-stopping
 
    # model = Model(ComputationGraph(network))
 
