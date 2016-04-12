@@ -75,12 +75,15 @@ def main_rnn(model,config):
     train_stream = get_stream()
 
     #MFCC and NGrams transform
-    train_stream = MFCC(train_stream)
+   # train_stream = MFCC(train_stream)
 
     train_stream = Window(1, config['window_size'], config['window_size'], True, train_stream)
+  #  source,target = 
     for source, target in train_stream.get_epoch_iterator():
         print(source, target)
+        source
         print(source[0])
+        #MFCC(source)
         #train(source, target)
 
 
@@ -106,11 +109,11 @@ def main_rnn(model,config):
     main_loop.run()
 
 if __name__ == '__main__':
+    pass
+  #  window_size = 10
 
-    window_size = 10
+  #  from models import getBidir
 
-    from models import getBidir
+ #   model = getBidir(window_size)
 
-    model = getBidir(window_size)
-
-    main_rnn(model, getconfig())
+#    main_rnn(model, getconfig())

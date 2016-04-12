@@ -83,6 +83,10 @@ def load_dataset1(batch_size, input_size, test=False):
 
     return train_stream, valid_stream, test_stream
 
+def augment_dataset(data_stream):
+    """ Augment the data_stream in input"""
+
+    pass
 
 def get_resnet_config(depth=1,image_size=(150,150),num_filters=32):
     assert depth>=0
