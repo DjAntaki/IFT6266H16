@@ -265,10 +265,10 @@ if __name__=='__main__':
         if step == 'adam' :
             from blocks.algorithms import Adam
             expr_config['step_rule'] = Adam
-        elif step == 'None' :
+        elif step == 'momentum' :
             from blocks.algorithms import Momentum
             expr_config['step_rule'] = Momentum 
-        elif step == 'RMSProp' :
+        elif step == 'RMSprop' :
             from blocks.algorithms import RMSProp
             expr_config['step_rule'] = RMSProp
         elif step == 'None':

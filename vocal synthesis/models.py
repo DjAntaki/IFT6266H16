@@ -8,7 +8,7 @@
 import theano
 from theano import tensor
 import numpy as np
-from blocks.bricks.recurrent import BaseRecurrent, LSTM, Bidirectional, GatedRecurrent, SimpleRecurrent
+from blocks.bricks.recurrent import LSTM #,BaseRecurrent, Bidirectional, GatedRecurrent, SimpleRecurrent
 from blocks.initialization import IsotropicGaussian, Orthogonal, Constant, Uniform, Identity
 from blocks.bricks import Tanh, NDimensionalSoftmax, Linear
 
@@ -57,7 +57,6 @@ def getLSTMstack(input_dim, input_var, depth):
     
     next_input = input_var
     for i in range(depth):
-        print('a')
         next_input, cells = add_lstm(input_dim,next_input)
         print(next_input)
 

@@ -2,6 +2,7 @@
 #Work in progress. Not functionnal yet.
 
 import MFCC
+import config
 import numpy as np
 import theano
 
@@ -16,47 +17,19 @@ from blocks.monitoring import aggregation
 from blocks.extensions import FinishAfter, Printing, Timing, ProgressBar
 from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.monitoring import TrainingDataMonitoring
-from blocks.bricks.cost import SquaredError
+from blocks.bricks.cost import SquaredError, CategoricalCrossEntropy
 
-def get_stream():
-    from fuel.datasets.youtube_audio import YouTubeAudio
-    data = YouTubeAudio('XqaJ2Ol5cC4')
-    stream = data.get_example_stream()
-
-    return stream
-
-def get_test_expr_config():
-    config = {}
-    config['source_size'] = 4000
-    config['target_size'] = 1000
-    config['learning_rate']= 0.05
- #   config['batch_size'] = 2
-    config['num_epochs'] = 10
-    config['num_batches'] = None
-    config['model'] = "LSTM4"
-    return config
-
-def get_expr_config(num_epochs=300,source_size=4000, target_size=1000, learning_rate=0.05,batch_size=64,num_batches=None):
-    config = {}
-    config['source_size'] = window_size
-    config['target_size'] = target_size
-    config['learning_rate']= learning_rate
-#    config['batch_size'] = batch_size
-    config['num_epochs'] = num_epochs
-    config['num_batches'] = num_batches
-    config['model'] = "LSTM4"
-    return config
 
 def main_rnn(config):
 
-    x = tensor.matrix('features')
-    y = tensor.vector('targets')
+    x = tensor.tensor3('features')
+    y = tensor.matrix('targets')
 
-    if config['model'][:-1] == 'LSTM':
+    if 'LSTM' in config['model'] :
         from models import getLSTMstack
-        y_hat = getLSTMstack(input_dim=2, input_var=x, depth=int(config['model'][-1]))
+        y_hat = getLSTMstack(input_dim=34, input_var=x, depth=int(config['model'][-1]))
     else :
-        raise Exception("lolwut")
+        raise Exception("These are not the LSTM we are looking for")
 
 #    y_hat = model.apply(x)
 
@@ -71,12 +44,11 @@ def main_rnn(config):
 
 
     #Getting the stream
-    train_stream = MFCC.get_stream(config['source_size'],config['target_size'])
+    train_stream = MFCC.get_stream(config['batch_size'],config['source_size'],config['target_size'],config['num_examples'])
 
     #Monitoring stuff
     extensions = [Timing(),
-                  FinishAfter(after_n_epochs=config['num_epochs'],
-                              after_n_batches=config['num_batches']),
+                  FinishAfter(after_n_batches=config['num_batches']),
                   #DataStreamMonitoring([cost, error_rate],test_stream,prefix="test"),
                   TrainingDataMonitoring([cost], prefix="train", every_n_batches=1),
                   #Checkpoint(save_to),
@@ -92,5 +64,20 @@ def main_rnn(config):
 
     main_loop.run()
 
+def load_model(path):
+    """Load the previously saved model"""
+    pass
+
+def generate_music():
+    pass
+
+
 if __name__ == '__main__':
-    main_rnn(get_test_expr_config())
+
+  #  import sys
+ #   if len(sys.argv) > 1 :
+
+#    else :
+    expr_config = config.get_expr_config('test')
+
+    main_rnn(expr_config)
