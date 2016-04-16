@@ -35,7 +35,12 @@ sys.setrecursionlimit(10000)
 def ceildiv(a, b):
     return -(-a // b)
 
-def build_cnn(input_var=None, image_shape=(64,64), n=1, num_filters=8):
+def build_cnn(input_var=None, image_shape=(64,64), n=1, nb_bottlestack=3, num_filters=8):
+    """ 
+    n : the nb of blocks in a bottlestack 
+    nb_bottlestack : the number of bottlestack
+
+    """
     # Setting up layers
     conv = lasagne.layers.Conv2DLayer
     #import lasagne.layers.dnn              #Remove if GPU and comment above
@@ -210,15 +215,8 @@ def build_cnn(input_var=None, image_shape=(64,64), n=1, num_filters=8):
 
 
     #res_block = res_block_v1       
-<<<<<<< HEAD
-  #  res_block = res_block_v2
-    res_block = lambda x,nonlinearity=nonlin, increase_dim=False : bottleneck_block_fast(x, nonlinearity,
-                     increase_dim, projection=True)
-=======
-   # res_block = res_block_v2
-    res_block = lambda x,nonlinearity=nonlin, increase_dim=False :bottleneck_block_fast(x, nonlinearity, increase_dim, projection=True)
-
->>>>>>> fb6b7dd17e5ab67436c32906f861da3c8ce0642b
+    res_block = res_block_v2
+   # res_block = lambda x,nonlinearity=nonlin, increase_dim=False :bottleneck_block_fast(x, nonlinearity, increase_dim, projection=True)
 
     # Stacks the bottlenecks, makes it easy to model size of architecture with int n   
     def blockstack(l, n, nonlinearity=nonlin):
@@ -235,19 +233,15 @@ def build_cnn(input_var=None, image_shape=(64,64), n=1, num_filters=8):
     l1 = batchnorm(l1)
     l1 = nonlin_layer(l1, nonlinearity=nonlin)
 
+    l_in = l1
     # Stacking bottlenecks and increasing dims! (while reducing shape size)
-    l1_bs = blockstack(l1, n=n)
-    l1_id = res_block(l1_bs, increase_dim=True)
-
-    l2_bs = blockstack(l1_id, n=n)
-    l2_id = res_block(l2_bs, increase_dim=True)
-
-    l3_bs = blockstack(l2_id, n=n)
-    l3_id = res_block(l3_bs, increase_dim=True)
+    for _ in range(nb_bottlestack):
+        l_in = blockstack(l_in, n=n)
+        l_in = res_block(l_in, increase_dim=True)
 
     # And, finally, the output layer:
     network = lasagne.layers.DenseLayer(
-            l3_id,
+            l_in,
             num_units=2,
             nonlinearity=lasagne.nonlinearities.softmax)
 

@@ -161,10 +161,10 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     pondlayers = {x:0.01 for x in layers}
     l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
     l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/5:], lasagne.regularization.l1) * 1e-4
-    reg_loss = l1_penality + l2_penality
-    reg_loss.name = 'reg_penalty'
-    loss = loss + reg_loss
-    loss.name = 'reg_sqr_error'
+    reg_penalty = l1_penality + l2_penality
+    reg_penalty.name = 'reg_penalty'
+    loss = loss + reg_penalty
+    loss.name = 'reg_loss'
 
     params = lasagne.layers.get_all_params(network, trainable=True)
 
@@ -221,7 +221,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     extensions = [Timing(),
                   FinishAfter(after_n_epochs=experimentconfig['num_epochs'],
                               after_n_batches=experimentconfig['num_batches']),
-                  TrainingDataMonitoring([loss, error_rate, grad_norm, reg_loss], prefix="train", after_epoch=True), #after_n_epochs=1
+                  TrainingDataMonitoring([loss, error_rate, grad_norm, reg_penalty], prefix="train", after_epoch=True), #after_n_epochs=1
                   DataStreamMonitoring([loss, error_rate],valid_stream,prefix="valid", after_epoch=True), #after_n_epochs=1
                   #Checkpoint(save_to,after_n_epochs=5),
                   #ProgressBar(),
