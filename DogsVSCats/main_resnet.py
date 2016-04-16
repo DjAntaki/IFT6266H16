@@ -17,6 +17,7 @@ import numpy as np
 from blocks.algorithms import GradientDescent, Scale
 from blocks.main_loop import MainLoop
 from blocks.model import Model
+from blocks.bricks.cost import MisclassificationRate
 
 from blocks.extensions import FinishAfter, Timing, Printing, ProgressBar
 from blocks.extensions.monitoring import (DataStreamMonitoring,
@@ -130,7 +131,7 @@ def get_info(network):
 def build_and_run(save_to,modelconfig,experimentconfig):
     """ part of this is adapted from lasagne tutorial""" 
 
-    n, num_filters, image_size = modelconfig['depth'],modelconfig['num_filters'], modelconfig['image_size']
+    n, num_filters, image_size = modelconfig['depth'], modelconfig['num_filters'], modelconfig['image_size']
     
     print("Amount of bottlenecks: %d" % n)
 
@@ -167,11 +168,14 @@ def build_and_run(save_to,modelconfig,experimentconfig):
 
     params = lasagne.layers.get_all_params(network, trainable=True)
 
-    #Accuracy    
-    acc = T.mean(T.eq(T.argmax(prediction, axis=1), target_var.flatten()),dtype=theano.config.floatX)
+    #Accuracy 
+    error_rate = MisclassificationRate().apply(target_var.flatten(), prediction).copy(
+            name='error_rate')
+#  
+#    acc = T.mean(T.eq(T.argmax(prediction, axis=1), target_var.flatten()),dtype=theano.config.floatX)
  #   acc = T.mean(T.eq(T.argmax(prediction, axis=1), target_vec),dtype=theano.config.floatX)
     
-    acc.name = 'acc'
+   # acc.name = 'acc'
     
     #cg = ComputationGraph(loss,parameters=params)
     #print(cg.variables)
@@ -192,7 +196,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     if 'test' in experimentconfig.keys() :
         train_stream, valid_stream, test_stream = load_dataset1(experimentconfig['batch_size'],image_size,test=True)
     else :
-        train_stream, valid_stream, test_stream = load_dataset1(experimentconfig['batch_size'],image_size,test=True)
+        train_stream, valid_stream, test_stream = load_dataset1(experimentconfig['batch_size'],image_size,test=False)
 
     # Defining step rule and algorithm
     if 'step_rule' in experimentconfig.keys() and not experimentconfig['step_rule'] is None :
@@ -211,22 +215,22 @@ def build_and_run(save_to,modelconfig,experimentconfig):
   #  checkpoint.add_condition(['after_n_batches=25'],
 
     checkpoint.add_condition(['after_epoch'],
-                         predicate=OnLogRecord('valid_acc_best_so_far'))
+                         predicate=OnLogRecord('valid_error_rate_best_so_far'))
 
     #Defining extensions
     extensions = [Timing(),
                   FinishAfter(after_n_epochs=experimentconfig['num_epochs'],
                               after_n_batches=experimentconfig['num_batches']),
-                  TrainingDataMonitoring([loss, acc, grad_norm, reg_loss], prefix="train", after_epoch=True), #after_n_epochs=1
-                  DataStreamMonitoring([loss, acc],valid_stream,prefix="valid", after_epoch=True), #after_n_epochs=1
+                  TrainingDataMonitoring([loss, error_rate, grad_norm, reg_loss], prefix="train", after_epoch=True), #after_n_epochs=1
+                  DataStreamMonitoring([loss, error_rate],valid_stream,prefix="valid", after_epoch=True), #after_n_epochs=1
                   #Checkpoint(save_to,after_n_epochs=5),
                   #ProgressBar(),
                   #Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://localhost:8007'), #'grad_norm'
                   #       after_batch=True),
                   Printing(after_epoch=True),
-                  TrackTheBest('valid_acc'), #Keep best
+                  TrackTheBest('valid_error_rate'), #Keep best
                   checkpoint,  #Save best
-                  FinishIfNoImprovementAfter('valid_acc_best_so_far', epochs=5)] # Early-stopping
+                  FinishIfNoImprovementAfter('valid_error_rate_best_so_far', epochs=20)] # Early-stopping
 
    # model = Model(ComputationGraph(network))
 
@@ -242,7 +246,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
 if __name__=='__main__':
     import sys
     #Usage notice,
-    # [modelconfig] [experiment_config] [None|adam|Momentum|RMSProp]
+    # [modelconfig] [experiment_config] [None|adam|Momentum|RMSProp] optionnal:[extra_label]
     # 
     print("Arguments :"+ ' '.join(sys.argv))
     
@@ -254,13 +258,14 @@ if __name__=='__main__':
         print("Aweille Kevin continue comme ça...")
         label = 'test'
     else :        
-        print("Retrieving test model config...")
+        print("Retrieving model config...")
         model_config = get_model_config(sys.argv[1])
-        print("Retrieving test experiment config...")
+        print("Retrieving experiment config...")
         expr_config = get_expr_config(sys.argv[2])
         step = sys.argv[3]
         label = sys.argv[1] + '_' + sys.argv[2] + '_'+sys.argv[3]
-
+        if len(sys.argv) > 4:
+            label += sys.argv[4]
 
         if step == 'adam' :
             from blocks.algorithms import Adam
@@ -278,7 +283,7 @@ if __name__=='__main__':
             from blocks.algorithms import RMSProp
             expr_config['step_rule'] = RMSProp
 
-
+    print(model_config,expr_config,label)
     build_and_run(label,model_config,expr_config)
 
  

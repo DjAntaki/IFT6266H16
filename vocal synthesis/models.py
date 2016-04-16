@@ -96,6 +96,10 @@ def test():
     print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
     print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
     print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+    print(f(np.ones((1,1,3),dtype=theano.config.floatX)))
+
 
 
 

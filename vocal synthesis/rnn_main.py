@@ -43,8 +43,10 @@ def main_rnn(config):
         step_rule=Scale(learning_rate=config['learning_rate']))
 
 
+
     #Getting the stream
     train_stream = MFCC.get_stream(config['batch_size'],config['source_size'],config['target_size'],config['num_examples'])
+
 
     #Monitoring stuff
     extensions = [Timing(),
