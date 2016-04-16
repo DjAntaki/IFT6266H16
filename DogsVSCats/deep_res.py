@@ -39,7 +39,7 @@ def build_cnn(input_var=None, image_shape=(64,64), n=1, num_filters=8):
     # Setting up layers
     conv = lasagne.layers.Conv2DLayer
     #import lasagne.layers.dnn              #Remove if GPU and comment above
-#    conv = lasagne.layers.dnn.Conv2DDNNLayer 
+    #conv = lasagne.layers.dnn.Conv2DDNNLayer 
  
     nonlin = lasagne.nonlinearities.rectify
     nonlin_layer = lasagne.layers.NonlinearityLayer
@@ -210,7 +210,9 @@ def build_cnn(input_var=None, image_shape=(64,64), n=1, num_filters=8):
 
 
     #res_block = res_block_v1       
-    res_block = res_block_v2
+   # res_block = res_block_v2
+    res_block = lambda x,nonlinearity=nonlin, increase_dim=False :bottleneck_block_fast(x, nonlinearity, increase_dim, projection=True)
+
 
     # Stacks the bottlenecks, makes it easy to model size of architecture with int n   
     def blockstack(l, n, nonlinearity=nonlin):
