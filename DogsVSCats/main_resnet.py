@@ -131,7 +131,7 @@ def get_info(network):
 def build_and_run(save_to,modelconfig,experimentconfig):
     """ part of this is adapted from lasagne tutorial""" 
 
-    n, num_filters, image_size = modelconfig['depth'], modelconfig['num_filters'], modelconfig['image_size']
+    n, num_filters, image_size, num_blockstack = modelconfig['depth'], modelconfig['num_filters'], modelconfig['image_size'], modelconfig['num_blockstack']
     
     print("Amount of bottlenecks: %d" % n)
 
@@ -143,7 +143,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
 
     # Create residual net model
     print("Building model...")
-    network = build_cnn(input_var, image_size, n, num_filters)
+    network = build_cnn(input_var, image_size, n, num_blockstack, num_filters)
     get_info(network)
     prediction = lasagne.layers.get_output(network)
 
@@ -160,7 +160,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     #l1 and l2 regularization
     pondlayers = {x:0.01 for x in layers}
     l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
-    l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/5:], lasagne.regularization.l1) * 1e-4
+    l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/4:], lasagne.regularization.l1) * 1e-4
     reg_penalty = l1_penality + l2_penality
     reg_penalty.name = 'reg_penalty'
     loss = loss + reg_penalty

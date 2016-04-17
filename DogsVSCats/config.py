@@ -4,18 +4,27 @@ def get_model_config(config):
         config1['depth'] = 1
         config1['num_filters'] = 8
         config1['image_size'] = (42,42)
+        config1['num_blockstack'] = 1
     elif config == 'ModelA' or config == 'default':
         config1['depth'] = 1
         config1['num_filters'] = 8
         config1['image_size'] = (64,64)
+        config1['num_blockstack'] = 3
     elif config == 'ModelB':
         config1['depth'] = 2
         config1['num_filters'] = 8
         config1['image_size'] = (64,64)
+        config1['num_blockstack'] = 4
     elif config == 'ModelC':
+        config1['depth'] = 2
+        config1['num_filters'] = 8
+        config1['image_size'] = (128,128)
+        config1['num_blockstack'] = 4
+    elif config == 'ModelD':
         config1['depth'] = 3
         config1['num_filters'] = 8
         config1['image_size'] = (128,128)
+        config1['num_blockstack'] = 4
     else :
         print("Invalid config name")
         return
