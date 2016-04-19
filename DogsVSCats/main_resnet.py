@@ -137,9 +137,9 @@ def build_and_run(save_to,modelconfig,experimentconfig):
 
     # Prepare Theano variables for inputs and targets
     input_var = T.tensor4('image_features')
-    #target_var = T.ivector('targets')
+    #target_value = T.ivector('targets')
     target_var = T.lmatrix('targets')
-    target_vec = T.extra_ops.to_one_hot(target_var,2)
+    target_vec = T.extra_ops.to_one_hot(target_var[:,0],2)
 
     # Create residual net model
     print("Building model...")
@@ -151,9 +151,10 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     # Loss function -> The objective to minimize 
     print("Instanciation of loss function...")
  
- #  loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten())
-    loss = lasagne.objectives.squared_error(prediction,target_vec)
-    test_loss = lasagne.objectives.squared_error(prediction,target_vec)
+    loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten())
+  #  loss = lasagne.objectives.squared_error(prediction,target_vec)
+    test_loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten())
+    #test_loss = lasagne.objectives.squared_error(test_prediction,target_vec)
     loss = loss.mean()
     test_loss = test_loss.mean()
 #    loss.name = 'x-ent_error'
@@ -231,7 +232,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
                   #Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://localhost:8007'), #'grad_norm'
                   #       after_batch=True),
                   Printing(after_epoch=True),
-                  TrackTheBest('valid_error_rate',min), #Keep best
+                  TrackTheBest('valid_error_ratehad',min), #Keep best
                   checkpoint,  #Save best
                   FinishIfNoImprovementAfter('valid_error_rate_best_so_far', epochs=20)] # Early-stopping
 
