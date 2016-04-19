@@ -146,13 +146,16 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     network = build_cnn(input_var, image_size, n, num_blockstack, num_filters)
     get_info(network)
     prediction = lasagne.layers.get_output(network)
+    test_prediction = lasagne.layers.get_output(network,deterministic=True)
 
     # Loss function -> The objective to minimize 
     print("Instanciation of loss function...")
  
  #  loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten())
     loss = lasagne.objectives.squared_error(prediction,target_vec)
+    test_loss = lasagne.objectives.squared_error(prediction,target_vec)
     loss = loss.mean()
+    test_loss = test_loss.mean()
 #    loss.name = 'x-ent_error'
 #    loss.name = 'sqr_error'
     layers = lasagne.layers.get_all_layers(network)
@@ -169,7 +172,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     params = lasagne.layers.get_all_params(network, trainable=True)
 
     #Accuracy 
-    error_rate = MisclassificationRate().apply(target_var.flatten(), prediction).copy(
+    error_rate = MisclassificationRate().apply(target_var.flatten(), test_prediction).copy(
             name='error_rate')
 #  
 #    acc = T.mean(T.eq(T.argmax(prediction, axis=1), target_var.flatten()),dtype=theano.config.floatX)
@@ -221,14 +224,14 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     extensions = [Timing(),
                   FinishAfter(after_n_epochs=experimentconfig['num_epochs'],
                               after_n_batches=experimentconfig['num_batches']),
-                  TrainingDataMonitoring([loss, error_rate, grad_norm, reg_penalty], prefix="train", after_epoch=True), #after_n_epochs=1
-                  DataStreamMonitoring([loss, error_rate],valid_stream,prefix="valid", after_epoch=True), #after_n_epochs=1
+                  TrainingDataMonitoring([test_loss, error_rate, grad_norm, reg_penalty], prefix="train", after_epoch=True), #after_n_epochs=1
+                  DataStreamMonitoring([test_loss, error_rate],valid_stream,prefix="valid", after_epoch=True), #after_n_epochs=1
                   #Checkpoint(save_to,after_n_epochs=5),
                   #ProgressBar(),
                   #Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://localhost:8007'), #'grad_norm'
                   #       after_batch=True),
                   Printing(after_epoch=True),
-                  TrackTheBest('valid_error_rate'), #Keep best
+                  TrackTheBest('valid_error_rate',min), #Keep best
                   checkpoint,  #Save best
                   FinishIfNoImprovementAfter('valid_error_rate_best_so_far', epochs=20)] # Early-stopping
 

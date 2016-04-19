@@ -33,13 +33,7 @@ def get_model_config(config):
 
 def get_expr_config(config):
     config1={}
-    if config == 'default':
-        config1['num_epochs'] = 100
-        config1['batch_size'] = 32
-        config1['num_batches'] = None
-        config1['learning_rate']= 0.05
-        config1['step_rule'] = None
-    elif config == 'test':
+    if config == 'test':
         config1['num_epochs'] = 15
         config1['batch_size'] = 5
         config1['num_batches'] = None
@@ -56,8 +50,13 @@ def get_expr_config(config):
         config1['num_batches'] = None
         config1['learning_rate']= 0.05
     else :
-        print("Invalid config name")
-        return
+        if not config == 'default':
+            print("Invalid config name. Using default.")
+        config1['num_epochs'] = 80
+        config1['batch_size'] = 32
+        config1['num_batches'] = None
+        config1['learning_rate']= 0.05
+        config1['step_rule'] = None
     return config1
 
 
