@@ -27,7 +27,7 @@ from blocks.monitoring import aggregation
 from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.stopping import FinishIfNoImprovementAfter
 from blocks.extensions.training import TrackTheBest
-#from blocks_extras.extensions.plot import Plot
+from blocks_extras.extensions.plot import Plot
 from fuel.transformers import Cast
 
 def load_dataset1(batch_size, input_size, test=False):
@@ -151,12 +151,14 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     # Loss function -> The objective to minimize 
     print("Instanciation of loss function...")
  
-    loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten())
-  #  loss = lasagne.objectives.squared_error(prediction,target_vec)
-    test_loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten())
-    #test_loss = lasagne.objectives.squared_error(test_prediction,target_vec)
+    #loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten())
+    loss = lasagne.objectives.squared_error(prediction,target_vec)
+  #  test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var.flatten())
+    test_loss = lasagne.objectives.squared_error(test_prediction,target_vec)
     loss = loss.mean()
     test_loss = test_loss.mean()
+    test_loss.name = "loss"
+
 #    loss.name = 'x-ent_error'
 #    loss.name = 'sqr_error'
     layers = lasagne.layers.get_all_layers(network)
@@ -229,10 +231,10 @@ def build_and_run(save_to,modelconfig,experimentconfig):
                   DataStreamMonitoring([test_loss, error_rate],valid_stream,prefix="valid", after_epoch=True), #after_n_epochs=1
                   #Checkpoint(save_to,after_n_epochs=5),
                   #ProgressBar(),
-                  #Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://localhost:8007'), #'grad_norm'
+                  Plot(save_to, channels=[['train_loss','valid_loss'], ['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042'), #'grad_norm'
                   #       after_batch=True),
                   Printing(after_epoch=True),
-                  TrackTheBest('valid_error_ratehad',min), #Keep best
+                  TrackTheBest('valid_error_rate',min), #Keep best
                   checkpoint,  #Save best
                   FinishIfNoImprovementAfter('valid_error_rate_best_so_far', epochs=20)] # Early-stopping
 
