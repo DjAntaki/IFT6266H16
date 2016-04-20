@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from theano import tensor
 from deep_res import build_cnn
 from config import *
 
@@ -19,6 +20,8 @@ from blocks.main_loop import MainLoop
 from blocks.model import Model
 from blocks.bricks.cost import MisclassificationRate
 
+from blocks.graph import ComputationGraph
+
 from blocks.extensions import FinishAfter, Timing, Printing, ProgressBar
 from blocks.extensions.monitoring import (DataStreamMonitoring,
                                           TrainingDataMonitoring)
@@ -28,66 +31,7 @@ from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.stopping import FinishIfNoImprovementAfter
 from blocks.extensions.training import TrackTheBest
 from blocks_extras.extensions.plot import Plot
-from fuel.transformers import Cast
-
-def load_dataset1(batch_size, input_size, test=False):
-
-    from fuel.datasets.dogs_vs_cats import DogsVsCats
-    from fuel.streams import DataStream
-    from fuel.schemes import ShuffledScheme
-    from fuel.transformers.image import RandomFixedSizeCrop
-    from fuel.transformers import Flatten #, ForceFloatX
-    from ScikitResize import ScikitResize
-    
-    # Load the training set
-    if test :
-        train = DogsVsCats(('train',),subset=slice(0, 200)) 
-        valid = DogsVsCats(('train',),subset=slice(19800, 20000)) 
-        test = DogsVsCats(('test',),subset=slice(0,4))
-    else :
-        train = DogsVsCats(('train',),subset=slice(0,22000)) 
-        valid = DogsVsCats(('train',),subset=slice(22000, 25000)) 
-        test = DogsVsCats(('test',))
-
-    #Generating stream
-    train_stream = DataStream.default_stream(
-        train,
-        iteration_scheme=ShuffledScheme(train.num_examples, batch_size)
-    )
-
-    valid_stream = DataStream.default_stream(
-        valid,
-        iteration_scheme=ShuffledScheme(valid.num_examples, batch_size)
-    )
-
-
-    test_stream = DataStream.default_stream(
-        test,
-        iteration_scheme=ShuffledScheme(test.num_examples, batch_size)
-    )
-    
-    #Reshaping procedure
-    #Apply crop and resize to desired square shape
-    train_stream = ScikitResize(train_stream, input_size, which_sources=('image_features',))
-    valid_stream = ScikitResize(valid_stream, input_size, which_sources=('image_features',))
-    test_stream = ScikitResize(test_stream, input_size, which_sources=('image_features',))
-
-    #ForceFloatX, to spare you from possible bugs
-    #train_stream = ForceFloatX(train_stream)
-    #valid_stream = ForceFloatX(valid_stream)
-    #test_stream = ForceFloatX(test_stream)
-
-    #Cast instead of forcefloatX
-    train_stream = Cast(train_stream, dtype='float32',which_sources=('image_features',))
-    valid_stream = Cast(valid_stream, dtype='float32',which_sources=('image_features',))
-    test_stream = Cast(test_stream, dtype='float32',which_sources=('image_features',))
-
-
-    return train_stream, valid_stream, test_stream
-
-def augment_data():
-    pass
-
+from stream import get_stream
 
 def get_info(network):
     """taken from aljaro's residual network main. See file deep_res.py"""
@@ -147,14 +91,30 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     get_info(network)
     prediction = lasagne.layers.get_output(network)
     test_prediction = lasagne.layers.get_output(network,deterministic=True)
+  #  cg = ComputationGraph([prediction])
+
+    cg = ComputationGraph([prediction])
+    prediction = cg.outputs[0]
+    print('cgparams',cg.parameters)
+    #params = lasagne.layers.get_all_params(network, trainable=True)
+    #print(params)
+   # print('aux', cg.variables)
+    #from blocks.roles import PARAMETER
+    #from blocks.filter import VariableFilter
+    #var_filter = VariableFilter(roles=[PARAMETER])(cg.variables)
+    #print(var_filter)
 
     # Loss function -> The objective to minimize 
     print("Instanciation of loss function...")
  
-    #loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten())
-    loss = lasagne.objectives.squared_error(prediction,target_vec)
-  #  test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var.flatten())
-    test_loss = lasagne.objectives.squared_error(test_prediction,target_vec)
+#    loss = CategoricalCrossEntropy().apply(target_var.flatten(), prediction)
+ #   test_loss = CategoricalCrossEntropy().apply(target_var.flatten(), prediction)
+    loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten()) #
+    test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var.flatten())
+    #loss = lasagne.objectives.squared_error(prediction,target_vec)
+    #test_loss = lasagne.objectives.squared_error(test_prediction,target_vec)
+  #  loss = tensor.nnet.binary_crossentropy(prediction, target_vec)
+  #  test_loss = tensor.nnet.binary_crossentropy(test_prediction, target_vec)
     loss = loss.mean()
     test_loss = test_loss.mean()
     test_loss.name = "loss"
@@ -164,34 +124,32 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     layers = lasagne.layers.get_all_layers(network)
 
     #l1 and l2 regularization
-    pondlayers = {x:0.01 for x in layers}
-    l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
-    l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/4:], lasagne.regularization.l1) * 1e-4
-    reg_penalty = l1_penality + l2_penality
-    reg_penalty.name = 'reg_penalty'
-    loss = loss + reg_penalty
+#    pondlayers = {x:0.01 for x in layers}
+#    l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
+#    l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/4:], lasagne.regularization.l1) * 1e-4
+#    reg_penalty = l1_penality + l2_penality
+#    reg_penalty.name = 'reg_penalty'
+#    loss = loss + reg_penalty
     loss.name = 'reg_loss'
 
-    params = lasagne.layers.get_all_params(network, trainable=True)
+   
 
     #Accuracy 
     error_rate = MisclassificationRate().apply(target_var.flatten(), test_prediction).copy(
             name='error_rate')
-#  
+    # Alternatives
+    #error = tensor.gt(tensor.abs_(prediction_test - T), 0.5).mean(dtype='float32')
+    #error.name = 'error'
+
+
 #    acc = T.mean(T.eq(T.argmax(prediction, axis=1), target_var.flatten()),dtype=theano.config.floatX)
  #   acc = T.mean(T.eq(T.argmax(prediction, axis=1), target_vec),dtype=theano.config.floatX)
     
    # acc.name = 'acc'
     
-    #cg = ComputationGraph(loss,parameters=params)
+     #,parameters=params
     #print(cg.variables)
 #    print(cg.params)
-
-
-#    cost = CategoricalCrossEntropy().apply(target_var.flatten(), prediction).copy(name='cost')
-#    error_rate = MisclassificationRate().apply(target_var.flatten(), prediction).copy(
-#            name='error_rate')
-#    cg = ComputationGraph([cost])
 
 
 #    print("Instantiation of live-plotting extention with bokeh-server...")
@@ -199,10 +157,11 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     
     # Load the dataset
     print("Loading data...")
-    if 'test' in experimentconfig.keys() :
-        train_stream, valid_stream, test_stream = load_dataset1(experimentconfig['batch_size'],image_size,test=True)
+    if 'test' in experimentconfig.keys() and experimentconfig['test'] is True:
+        print("Using test stream")
+        train_stream, valid_stream, test_stream = get_stream(experimentconfig['batch_size'],image_size,test=True)
     else :
-        train_stream, valid_stream, test_stream = load_dataset1(experimentconfig['batch_size'],image_size,test=False)
+        train_stream, valid_stream, test_stream = get_stream(experimentconfig['batch_size'],image_size,test=False)
 
     # Defining step rule and algorithm
     if 'step_rule' in experimentconfig.keys() and not experimentconfig['step_rule'] is None :
@@ -210,9 +169,13 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     else :
         step_rule=Scale(learning_rate=experimentconfig['learning_rate'])
 
+    print("Initializing algorithm")
     algorithm = GradientDescent(
-                cost=loss, parameters=params,
+                cost=loss, parameters=cg.parameters, #params,
                 step_rule=step_rule)
+
+    #algorithm.add_updates(extra_updates)
+
 
     grad_norm = aggregation.mean(algorithm.total_gradient_norm)    
 
@@ -231,19 +194,21 @@ def build_and_run(save_to,modelconfig,experimentconfig):
                   DataStreamMonitoring([test_loss, error_rate],valid_stream,prefix="valid", after_epoch=True), #after_n_epochs=1
                   #Checkpoint(save_to,after_n_epochs=5),
                   #ProgressBar(),
-                  Plot(save_to, channels=[['train_loss','valid_loss'], ['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042'), #'grad_norm'
+             #     Plot(save_to, channels=[['train_loss','valid_loss'], ['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042'), #'grad_norm'
                   #       after_batch=True),
                   Printing(after_epoch=True),
                   TrackTheBest('valid_error_rate',min), #Keep best
                   checkpoint,  #Save best
                   FinishIfNoImprovementAfter('valid_error_rate_best_so_far', epochs=20)] # Early-stopping
 
-   # model = Model(ComputationGraph(network))
+    model = Model(loss)
+    print("Model",model)
+
 
     main_loop = MainLoop(
         algorithm,
         train_stream,
-      #  model=model,
+        model=model,
         extensions=extensions)
     print("Starting main loop...")
 

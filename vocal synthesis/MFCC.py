@@ -20,13 +20,15 @@ def get_stream(batch_size, source_window=4000, target_window=1000, num_examples=
     feats_stream = Mapping(source_stream, mfcc)
     targets_stream = FilterSources(window_stream, sources=('targets',))
     targets_stream = Flatten(targets_stream)
-    stream = Merge((feats_stream,targets_stream),sources = ('features','targets'))
+    stream = Merge((feats_stream,targets_stream), sources = ('features','targets'))
     #Add a random Scheme?
     it_scheme = ConstantScheme(batch_size,num_examples)
     batched_stream = Batch(stream, it_scheme, strictness=1)
     return batched_stream
 
-#if __name__ == '__main__':
+if __name__ == '__main__':
+    q = get_stream(10)
+
 #    from fuel.datasets.youtube_audio import YouTubeAudio
 #    data = YouTubeAudio('XqaJ2Ol5cC4')
 #    train_stream = data.get_example_stream()
@@ -37,7 +39,7 @@ def get_stream(batch_size, source_window=4000, target_window=1000, num_examples=
 #    targets_stream = FilterSources(window_stream, sources=('targets',))
 #    train_stream = Merge((feats_stream,targets_stream),sources = ('features','targets'))
 
-#for x,y in q.get_epoch_iterator():
- #   print(x.shape,y.shape)
+#    for x,y in q.get_epoch_iterator():
+ #      print(x.shape,y.shape)
         
 
