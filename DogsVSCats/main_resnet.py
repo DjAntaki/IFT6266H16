@@ -18,7 +18,7 @@ import numpy as np
 from blocks.algorithms import GradientDescent, Scale
 from blocks.main_loop import MainLoop
 from blocks.model import Model
-from blocks.bricks.cost import MisclassificationRate
+from blocks.bricks.cost import MisclassificationRate, CategoricalCrossEntropy
 
 from blocks.graph import ComputationGraph
 
@@ -83,40 +83,29 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     input_var = T.tensor4('image_features')
     #target_value = T.ivector('targets')
     target_var = T.lmatrix('targets')
-    target_vec = T.extra_ops.to_one_hot(target_var[:,0],2)
-
+    #target_vec = T.extra_ops.to_one_hot(target_var[:,0],2)
+    #target_var = T.matrix('targets')
     # Create residual net model
     print("Building model...")
     network = build_cnn(input_var, image_size, n, num_blockstack, num_filters)
     get_info(network)
-    prediction = lasagne.layers.get_output(network)
-    test_prediction = lasagne.layers.get_output(network,deterministic=True)
-  #  cg = ComputationGraph([prediction])
-
-    cg = ComputationGraph([prediction])
-    prediction = cg.outputs[0]
-    print('cgparams',cg.parameters)
-    #params = lasagne.layers.get_all_params(network, trainable=True)
-    #print(params)
-   # print('aux', cg.variables)
-    #from blocks.roles import PARAMETER
-    #from blocks.filter import VariableFilter
-    #var_filter = VariableFilter(roles=[PARAMETER])(cg.variables)
-    #print(var_filter)
+    prediction = lasagne.utils.as_theano_expression(lasagne.layers.get_output(network))
+    print(prediction)
+    test_prediction = lasagne.utils.as_theano_expression(lasagne.layers.get_output(network,deterministic=True))
 
     # Loss function -> The objective to minimize 
     print("Instanciation of loss function...")
  
-#    loss = CategoricalCrossEntropy().apply(target_var.flatten(), prediction)
- #   test_loss = CategoricalCrossEntropy().apply(target_var.flatten(), prediction)
-    loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten()) #
-    test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var.flatten())
+    loss = CategoricalCrossEntropy().apply(target_var.flatten(), prediction)
+    test_loss = CategoricalCrossEntropy().apply(target_var.flatten(), test_prediction)
+ #   loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten()) #
+  #  test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var.flatten())
     #loss = lasagne.objectives.squared_error(prediction,target_vec)
     #test_loss = lasagne.objectives.squared_error(test_prediction,target_vec)
-  #  loss = tensor.nnet.binary_crossentropy(prediction, target_vec)
-  #  test_loss = tensor.nnet.binary_crossentropy(test_prediction, target_vec)
-    loss = loss.mean()
-    test_loss = test_loss.mean()
+  #  loss = tensor.nnet.binary_crossentropy(prediction, target_var)
+  #  test_loss = tensor.nnet.binary_crossentropy(test_prediction, target_var)
+   # loss = loss.mean()
+   # test_loss = test_loss.mean()
     test_loss.name = "loss"
 
 #    loss.name = 'x-ent_error'
@@ -124,36 +113,20 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     layers = lasagne.layers.get_all_layers(network)
 
     #l1 and l2 regularization
-#    pondlayers = {x:0.01 for x in layers}
-#    l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
-#    l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/4:], lasagne.regularization.l1) * 1e-4
-#    reg_penalty = l1_penality + l2_penality
-#    reg_penalty.name = 'reg_penalty'
-#    loss = loss + reg_penalty
+    pondlayers = {x:0.01 for x in layers}
+    l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
+    l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/4:], lasagne.regularization.l1) * 1e-4
+    reg_penalty = l1_penality + l2_penality
+    reg_penalty.name = 'reg_penalty'
+    loss = loss + reg_penalty
     loss.name = 'reg_loss'
-
-   
 
     #Accuracy 
     error_rate = MisclassificationRate().apply(target_var.flatten(), test_prediction).copy(
             name='error_rate')
-    # Alternatives
-    #error = tensor.gt(tensor.abs_(prediction_test - T), 0.5).mean(dtype='float32')
-    #error.name = 'error'
 
-
-#    acc = T.mean(T.eq(T.argmax(prediction, axis=1), target_var.flatten()),dtype=theano.config.floatX)
- #   acc = T.mean(T.eq(T.argmax(prediction, axis=1), target_vec),dtype=theano.config.floatX)
-    
-   # acc.name = 'acc'
-    
-     #,parameters=params
-    #print(cg.variables)
-#    print(cg.params)
-
-
-#    print("Instantiation of live-plotting extention with bokeh-server...")
-#    plot = Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://127.0.0.1:8007/')    
+    print("Instantiation of live-plotting extention with bokeh-server...")
+    plot = Plot(save_to, channels=[['train_loss','valid_loss'], ['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042')    
     
     # Load the dataset
     print("Loading data...")
@@ -169,15 +142,17 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     else :
         step_rule=Scale(learning_rate=experimentconfig['learning_rate'])
 
+    params = map(lasagne.utils.as_theano_expression,lasagne.layers.get_all_params(network, trainable=True))
     print("Initializing algorithm")
     algorithm = GradientDescent(
-                cost=loss, parameters=cg.parameters, #params,
+                cost=loss, gradients={var:T.grad(loss,var) for var in params},#parameters=cg.parameters, #params
                 step_rule=step_rule)
 
     #algorithm.add_updates(extra_updates)
 
 
-    grad_norm = aggregation.mean(algorithm.total_gradient_norm)    
+    grad_norm = aggregation.mean(algorithm.total_gradient_norm)
+    grad_norm.name = "grad_norm"
 
     print("Initializing extensions...")
     checkpoint = Checkpoint('models/best_'+save_to+'.tar')
@@ -192,6 +167,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
                               after_n_batches=experimentconfig['num_batches']),
                   TrainingDataMonitoring([test_loss, error_rate, grad_norm, reg_penalty], prefix="train", after_epoch=True), #after_n_epochs=1
                   DataStreamMonitoring([test_loss, error_rate],valid_stream,prefix="valid", after_epoch=True), #after_n_epochs=1
+                  plot,
                   #Checkpoint(save_to,after_n_epochs=5),
                   #ProgressBar(),
              #     Plot(save_to, channels=[['train_loss','valid_loss'], ['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042'), #'grad_norm'
@@ -201,14 +177,14 @@ def build_and_run(save_to,modelconfig,experimentconfig):
                   checkpoint,  #Save best
                   FinishIfNoImprovementAfter('valid_error_rate_best_so_far', epochs=20)] # Early-stopping
 
-    model = Model(loss)
-    print("Model",model)
+ #   model = Model(loss)
+ #   print("Model",model)
 
 
     main_loop = MainLoop(
         algorithm,
         train_stream,
-        model=model,
+       # model=model,
         extensions=extensions)
     print("Starting main loop...")
 

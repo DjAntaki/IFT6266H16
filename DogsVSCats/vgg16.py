@@ -18,6 +18,7 @@ from lasagne.layers import Conv2DLayer as ConvLayer
 from lasagne.nonlinearities import softmax
 
 def get_model(config):
+    config1 = {}
     if config == 'vgg8' :
         config1['input_shape'] = (None,3,224,224)
         config1['init_filter'] = 64

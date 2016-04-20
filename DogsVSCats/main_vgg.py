@@ -18,7 +18,7 @@ from blocks.monitoring import aggregation
 from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.stopping import FinishIfNoImprovementAfter
 from blocks.extensions.training import TrackTheBest
-
+#from blocks_extras.extensions.plot import Plot
 from theano import tensor as T
 import theano
 import lasagne
@@ -28,7 +28,7 @@ import vgg16
 
 from stream import get_stream
 
-def build_and_run(experimentconfig, image_size=(224,224), save_to=None):
+def build_and_run(experimentconfig, image_size=(128,128), save_to=None): #modelconfig, 
     """ part of this is adapted from lasagne tutorial""" 
     
     # Prepare Theano variables for inputs and targets
@@ -39,7 +39,7 @@ def build_and_run(experimentconfig, image_size=(224,224), save_to=None):
 
     # Create residual net model
     print("Building model...")
-    network = vgg16.build_model()
+    network = vgg16.build_small_model()
     prediction = lasagne.layers.get_output(network["prob"],input_var)
 #    test_prediction = lasagne.layers.get_output(network["prob"],input_var,deterministic=True)
 
@@ -50,13 +50,8 @@ def build_and_run(experimentconfig, image_size=(224,224), save_to=None):
     loss = lasagne.objectives.squared_error(prediction,target_vec)
  #   test_loss = lasagne.objectives.squared_error(test_prediction,target_vec)
     loss = loss.mean()
-  #  test_loss = test_loss.mean()
-#    loss.name = 'x-ent_error'
-#    loss.name = 'sqr_error'
-#    layers = lasagne.layers.get_all_layers(network)
 
     layers = network.values()  
-
     #l1 and l2 regularization
     pondlayers = {x:0.01 for x in layers}
     l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
@@ -82,15 +77,16 @@ def build_and_run(experimentconfig, image_size=(224,224), save_to=None):
     else :
         step_rule=Scale(learning_rate=experimentconfig['learning_rate'])
 
-    params = lasagne.layers.get_all_params(network['prob'], trainable=True)
-    print(params)
+    params = map(lasagne.utils.as_theano_expression,lasagne.layers.get_all_params(network['prob'], trainable=True))
+
     algorithm = GradientDescent(
-                cost=loss, parameters=params,
+                cost=loss, gradients={var:T.grad(loss,var) for var in params},
                 step_rule=step_rule)
 
     grad_norm = aggregation.mean(algorithm.total_gradient_norm)    
 
     print("Initializing extensions...")
+ #   plot = Plot(save_to, channels=[['train_loss','valid_loss'], ['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042')    
     checkpoint = Checkpoint('models/best_'+save_to+'.tar')
   #  checkpoint.add_condition(['after_n_batches=25'],
 
@@ -105,7 +101,7 @@ def build_and_run(experimentconfig, image_size=(224,224), save_to=None):
                   DataStreamMonitoring([loss, error_rate],valid_stream,prefix="valid", after_epoch=True), #after_n_epochs=1
                   #Checkpoint(save_to,after_n_epochs=5),
                   #ProgressBar(),
-                  #Plot(modelconfig['label'], channels=[['train_mean','test_mean'], ['train_acc','test_acc']], server_url='https://localhost:8007'), #'grad_norm'
+               #   plot,
                   #       after_batch=True),
                   Printing(after_epoch=True),
                   TrackTheBest('valid_error_rate',min), #Keep best
@@ -123,4 +119,4 @@ def build_and_run(experimentconfig, image_size=(224,224), save_to=None):
 
     main_loop.run()
 
-build_and_run(get_expr_config('default'),save_to='test')
+build_and_run(get_expr_config('default'), vgg16.get_model("small"),save_to='test')
