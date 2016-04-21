@@ -151,7 +151,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     grad_norm.name = "grad_norm"
 
     print("Initializing extensions...")
-    plot = Plot(save_to, channels=[['train_loss','valid_loss'], ['train_grad_norm','train_reg_penalty']['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042')    
+    plot = Plot(save_to, channels=[['train_loss','valid_loss'], ['train_grad_norm','train_reg_penalty'],['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042')    
 
     checkpoint = Checkpoint('models/best_'+save_to+'.tar')
   #  checkpoint.add_condition(['after_n_batches=25'],

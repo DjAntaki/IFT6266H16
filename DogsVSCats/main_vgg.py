@@ -18,7 +18,7 @@ from blocks.monitoring import aggregation
 from blocks.extensions.saveload import Checkpoint
 from blocks.extensions.stopping import FinishIfNoImprovementAfter
 from blocks.extensions.training import TrackTheBest
-#from blocks_extras.extensions.plot import Plot
+from blocks_extras.extensions.plot import Plot
 from theano import tensor as T
 import theano
 import lasagne
@@ -40,7 +40,7 @@ def build_and_run(experimentconfig, modelconfig, save_to=None): #modelconfig,
 
     image_size = modelconfig['image_size']
     network = vgg16.build_small_model()
-    prediction = lasagne.layers.get_output(network["prob"],input_var)
+    prediction = lasagne.utils.as_theano_expression(lasagne.layers.get_output(network["prob"],input_var))
 #    test_prediction = lasagne.layers.get_output(network["prob"],input_var,deterministic=True)
 
     # Loss function -> The objective to minimize 
@@ -83,13 +83,13 @@ def build_and_run(experimentconfig, modelconfig, save_to=None): #modelconfig,
                 cost=loss, gradients={var:T.grad(loss,var) for var in params},
                 step_rule=step_rule)
 
-    grad_norm = aggregation.mean(algorithm.total_gradient_norm)    
+    grad_norm = aggregation.mean(algorithm.total_gradient_norm) 
+    grad_norm.name='grad_norm'   
 
     print("Initializing extensions...")
- #   plot = Plot(save_to, channels=[['train_loss','valid_loss'], ['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042')    
+    plot = Plot(save_to, channels=[['train_loss','valid_loss'], ['train_grad_norm','train_reg_penalty'],['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042')    
     checkpoint = Checkpoint('models/best_'+save_to+'.tar')
   #  checkpoint.add_condition(['after_n_batches=25'],
-
     checkpoint.add_condition(['after_epoch'],
                          predicate=OnLogRecord('valid_error_rate_best_so_far'))
 
@@ -101,12 +101,12 @@ def build_and_run(experimentconfig, modelconfig, save_to=None): #modelconfig,
                   DataStreamMonitoring([loss, error_rate],valid_stream,prefix="valid", after_epoch=True), #after_n_epochs=1
                   #Checkpoint(save_to,after_n_epochs=5),
                   #ProgressBar(),
-               #   plot,
+                  plot,
                   #       after_batch=True),
                   Printing(after_epoch=True),
                   TrackTheBest('valid_error_rate',min), #Keep best
                   checkpoint,  #Save best
-                  FinishIfNoImprovementAfter('valid_error_rate_best_so_far', epochs=20)] # Early-stopping
+                  FinishIfNoImprovementAfter('valid_error_rate_best_so_far', epochs=5)] # Early-stopping
 
    # model = Model(ComputationGraph(network))
 
