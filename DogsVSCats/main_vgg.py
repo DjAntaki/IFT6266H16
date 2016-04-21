@@ -28,17 +28,17 @@ import vgg16
 
 from stream import get_stream
 
-def build_and_run(experimentconfig, image_size=(128,128), save_to=None): #modelconfig, 
+def build_and_run(experimentconfig, modelconfig, save_to=None): #modelconfig, 
     """ part of this is adapted from lasagne tutorial""" 
-    
     # Prepare Theano variables for inputs and targets
     input_var = T.tensor4('image_features')
-    #target_var = T.ivector('targets')
     target_var = T.lmatrix('targets')
     target_vec = T.extra_ops.to_one_hot(target_var[:,0],2)
 
-    # Create residual net model
+    # Create vgg model
     print("Building model...")
+
+    image_size = modelconfig['image_size']
     network = vgg16.build_small_model()
     prediction = lasagne.layers.get_output(network["prob"],input_var)
 #    test_prediction = lasagne.layers.get_output(network["prob"],input_var,deterministic=True)
@@ -119,4 +119,4 @@ def build_and_run(experimentconfig, image_size=(128,128), save_to=None): #modelc
 
     main_loop.run()
 
-build_and_run(get_expr_config('default'), vgg16.get_model("small"),save_to='test')
+build_and_run(get_expr_config('default'), vgg16.get_model("small"),save_to='test_vgg')

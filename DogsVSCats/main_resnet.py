@@ -120,13 +120,9 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     reg_penalty.name = 'reg_penalty'
     loss = loss + reg_penalty
     loss.name = 'reg_loss'
-
-    #Accuracy 
     error_rate = MisclassificationRate().apply(target_var.flatten(), test_prediction).copy(
             name='error_rate')
 
-    print("Instantiation of live-plotting extention with bokeh-server...")
-    plot = Plot(save_to, channels=[['train_loss','valid_loss'], ['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042')    
     
     # Load the dataset
     print("Loading data...")
@@ -155,6 +151,8 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     grad_norm.name = "grad_norm"
 
     print("Initializing extensions...")
+    plot = Plot(save_to, channels=[['train_loss','valid_loss'], ['train_grad_norm','train_reg_penalty']['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042')    
+
     checkpoint = Checkpoint('models/best_'+save_to+'.tar')
   #  checkpoint.add_condition(['after_n_batches=25'],
 
@@ -175,7 +173,7 @@ def build_and_run(save_to,modelconfig,experimentconfig):
                   Printing(after_epoch=True),
                   TrackTheBest('valid_error_rate',min), #Keep best
                   checkpoint,  #Save best
-                  FinishIfNoImprovementAfter('valid_error_rate_best_so_far', epochs=20)] # Early-stopping
+                  FinishIfNoImprovementAfter('valid_error_rate_best_so_far', epochs=5)] # Early-stopping
 
  #   model = Model(loss)
  #   print("Model",model)

@@ -1,4 +1,7 @@
-# From : https://github.com/Lasagne/Recipes
+# 
+# I modified it a little.
+
+# ORIGINAL FROM : https://github.com/Lasagne/Recipes
 
 # VGG-16, 16-layer model from the paper:
 # "Very Deep Convolutional Networks for Large-Scale Image Recognition"
@@ -20,20 +23,20 @@ from lasagne.nonlinearities import softmax
 def get_model(config):
     config1 = {}
     if config == 'vgg8' :
-        config1['input_shape'] = (None,3,224,224)
+        config1['image_size'] = (192,192)
+        config1['init_filter'] = 48
+        config1['depth'] = 4
+        config1['num_hidden_layer_mlp'] = 2
+        config1['size_hidden_layer_mlp'] = 10
+    elif config == 'vgg16' :
+        config1['image_size'] = (224,224)
         config1['init_filter'] = 64
         config1['depth'] = 5
         config1['num_hidden_layer_mlp'] = 2
         config1['size_hidden_layer_mlp'] = 10
-    elif config == 'vgg16' :
-        config1['input_shape'] = (None,3,224,224)
-        config1['init_filter'] = 64
-        config1['depth'] = 5
-        config1['num_hidden_layer_mlp'] = 2
-        config1['size_hidden_layer_mlp'] = 4096
     else :
         print("Using default/test config")
-        config1['input_shape'] = (None,3,128,128)
+        config1['image_size'] = (128,128)
         config1['init_filter'] = 32
         config1['depth'] = 5
         config1['num_hidden_layer_mlp'] = 2
