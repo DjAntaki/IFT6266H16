@@ -5,6 +5,11 @@ def get_model_config(config):
         config1['num_filters'] = 8
         config1['image_size'] = (42,42)
         config1['num_blockstack'] = 1
+    elif config == 'ModelA2':
+        config1['depth'] = 1
+        config1['num_filters'] = 8
+        config1['image_size'] = (128,128)
+        config1['num_blockstack'] = 3
     elif config == 'ModelA' or config == 'default':
         config1['depth'] = 1
         config1['num_filters'] = 8
@@ -50,6 +55,11 @@ def get_expr_config(config):
         config1['batch_size'] = 32
         config1['num_batches'] = None
         config1['learning_rate']= 0.05
+    elif config == 'conf3':
+        config1['num_epochs'] = 200
+        config1['batch_size'] = 64
+        config1['num_batches'] = None
+        config1['learning_rate']= 0.01
     else :
         if not config == 'default':
             print("Invalid config name. Using default.")

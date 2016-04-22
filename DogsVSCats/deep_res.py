@@ -205,7 +205,7 @@ def build_cnn(input_var=None, image_shape=(64,64), n=1, nb_bottlestack=1, num_fi
         return l
        
  #   res_block = bottleneck_block_fast
-    res_block = res_block_v1       
+  #  res_block = res_block_v1       
     res_block = res_block_v2
 
     # Stacks the bottlenecks, makes it easy to model size of architecture with int n   
