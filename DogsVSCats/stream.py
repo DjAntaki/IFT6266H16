@@ -8,8 +8,8 @@ def get_stream(batch_size, input_size, test=False):
     from fuel.transformers import Cast
     # Load the training set
     if test :
-        train = DogsVsCats(('train',),subset=slice(0, 200)) 
-        valid = DogsVsCats(('train',),subset=slice(19800, 20000)) 
+        train = DogsVsCats(('train',),subset=slice(0, 30)) 
+        valid = DogsVsCats(('train',),subset=slice(19980, 20000)) 
         test = DogsVsCats(('test',),subset=slice(0,4))
     else :
         train = DogsVsCats(('train',),subset=slice(0,22000)) 

@@ -98,14 +98,12 @@ def build_and_run(save_to,modelconfig,experimentconfig):
  
     loss = CategoricalCrossEntropy().apply(target_var.flatten(), prediction)
     test_loss = CategoricalCrossEntropy().apply(target_var.flatten(), test_prediction)
- #   loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten()) #
-  #  test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var.flatten())
-    #loss = lasagne.objectives.squared_error(prediction,target_vec)
-    #test_loss = lasagne.objectives.squared_error(test_prediction,target_vec)
-  #  loss = tensor.nnet.binary_crossentropy(prediction, target_var)
-  #  test_loss = tensor.nnet.binary_crossentropy(test_prediction, target_var)
-   # loss = loss.mean()
-   # test_loss = test_loss.mean()
+ #   loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten()).mean()
+  #  test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var.flatten()).mean()
+    #loss = lasagne.objectives.squared_error(prediction,target_vec).mean()
+    #test_loss = lasagne.objectives.squared_error(test_prediction,target_vec).mean()
+  #  loss = tensor.nnet.binary_crossentropy(prediction, target_var).mean()
+  #  test_loss = tensor.nnet.binary_crossentropy(test_prediction, target_var).mean()
     test_loss.name = "loss"
 
 #    loss.name = 'x-ent_error'
@@ -126,11 +124,10 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     
     # Load the dataset
     print("Loading data...")
-    if 'test' in experimentconfig.keys() and experimentconfig['test'] is True:
+    istest = 'test' in experimentconfig.keys()
+    if istest:
         print("Using test stream")
-        train_stream, valid_stream, test_stream = get_stream(experimentconfig['batch_size'],image_size,test=True)
-    else :
-        train_stream, valid_stream, test_stream = get_stream(experimentconfig['batch_size'],image_size,test=False)
+    train_stream, valid_stream, test_stream = get_stream(experimentconfig['batch_size'],image_size,test=istest)
 
     # Defining step rule and algorithm
     if 'step_rule' in experimentconfig.keys() and not experimentconfig['step_rule'] is None :
