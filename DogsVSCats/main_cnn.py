@@ -44,6 +44,7 @@ def get_config(config):
         config1['batch_size'] = 16
         config1['activation'] = [Rectifier() for _ in config1['num_filter']]
         config1['mlp_activation'] = [Rectifier().apply for _ in config1['mlp_hiddens']] + [Softmax().apply]
+        config1['num_batches'] = None
     elif config == '4layers':
         config1['num_epochs'] = 100
         config1['num_channels'] = 3
@@ -56,6 +57,7 @@ def get_config(config):
         config1['batch_size'] = 32
         config1['activation'] = [Rectifier() for _ in config1['num_filter']]
         config1['mlp_activation'] = [Rectifier().apply for _ in config1['mlp_hiddens']] + [Softmax().apply]
+        config1['num_batches'] = None
     else :
         config1['num_epochs'] = 100
         config1['num_channels'] = 3
@@ -68,6 +70,8 @@ def get_config(config):
         config1['batch_size'] = 64
         config1['activation'] = [Rectifier() for _ in config1['num_filter']]
         config1['mlp_activation'] = [Rectifier().apply for _ in config1['mlp_hiddens']] + [Softmax().apply]
+        config1['num_batches'] = 11000
+
         if config == 'test' :
             print("Test run...")
             config1['test'] = True
@@ -79,7 +83,7 @@ def get_config(config):
 def build_and_run(label, config):
     ############## CREATE THE NETWORK ###############
     #Define the parameters
-    num_epochs, num_channels, image_shape, filter_size, num_filter, pooling_sizes, mlp_hiddens, output_size, batch_size, activation, mlp_activation  = config['num_epochs'], config['num_channels'], config['image_shape'], config['filter_size'], config['num_filter'], config['pooling_sizes'], config['mlp_hiddens'], config['output_size'], config['batch_size'], config['activation'], config['mlp_activation']
+    num_epochs, num_batches, num_channels, image_shape, filter_size, num_filter, pooling_sizes, mlp_hiddens, output_size, batch_size, activation, mlp_activation  = config['num_epochs'], config['num_batches'], config['num_channels'], config['image_shape'], config['filter_size'], config['num_filter'], config['pooling_sizes'], config['mlp_hiddens'], config['output_size'], config['batch_size'], config['activation'], config['mlp_activation']
 #    print(num_epochs, num_channels, image_shape, filter_size, num_filter, pooling_sizes, mlp_hiddens, output_size, batch_size, activation, mlp_activation)
     lambda_l1 = 0.000025
     lambda_l2 = 0.000025
@@ -166,7 +170,8 @@ def build_and_run(label, config):
     grad_norm.name = 'grad_norm'
 
     extensions = [Timing(),
-                  FinishAfter(after_n_epochs=num_epochs),
+                  FinishAfter(after_n_epochs=num_epochs,
+                  after_n_batches=num_batches),
                   DataStreamMonitoring([cost, error_rate, error_rate2], valid_stream, prefix="valid"),
                   TrainingDataMonitoring([costreg, error_rate, error_rate2,
                     grad_norm,l2_penalty,l1_penalty],
@@ -176,7 +181,7 @@ def build_and_run(label, config):
                   Printing(),
                   TrackTheBest('valid_error_rate',min), #Keep best
                   checkpoint,  #Save best
-                  FinishIfNoImprovementAfter('valid_error_rate_best_so_far', epochs=5)] # Early-stopping                  
+                  FinishIfNoImprovementAfter('valid_error_rate_best_so_far', epochs=4)] # Early-stopping                  
     model = Model(cost)
     main_loop = MainLoop(algorithm,data_stream=train_stream,model=model,extensions=extensions)
     main_loop.run()
