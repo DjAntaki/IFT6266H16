@@ -45,6 +45,11 @@ def get_expr_config(config):
         config1['learning_rate']= 0.02
         config1['step_rule'] = None
         config1['test'] = True
+    elif config == 'conf0':
+        config1['num_epochs'] = 200
+        config1['batch_size'] = 8
+        config1['num_batches'] = None
+        config1['learning_rate']= 0.01
     elif config == 'conf1':
         config1['num_epochs'] = 200
         config1['batch_size'] = 16

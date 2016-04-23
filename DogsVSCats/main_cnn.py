@@ -38,25 +38,24 @@ def get_config(config):
         config1['image_shape'] = (192, 192)
         config1['filter_size'] = [(5,5),(5,5),(5,5),(5,5),(5,5)]
         config1['num_filter'] = [32, 48, 64, 128, 256]
-        config1['pooling_sizes'] = [(2,2),(2,2),(2,2)]
-        config1['mlp_hiddens'] = [1000,750,500]
+        config1['pooling_sizes'] = [(2,2),(2,2),(2,2),(2,2),(2,2)]
+        config1['mlp_hiddens'] = [1000,100]
         config1['output_size'] = 2
-        config1['batch_size'] = 64
+        config1['batch_size'] = 16
         config1['activation'] = [Rectifier() for _ in config1['num_filter']]
         config1['mlp_activation'] = [Rectifier().apply for _ in config1['mlp_hiddens']] + [Softmax().apply]
-    elif config == '5layers':
+    elif config == '4layers':
         config1['num_epochs'] = 100
         config1['num_channels'] = 3
         config1['image_shape'] = (160, 160)
-        config1['filter_size'] = [(5,5),(5,5),(5,5),(5,5),(5,5)]
-        config1['num_filter'] = [32, 48, 64, 128, 256]
-        config1['pooling_sizes'] = [(2,2),(2,2),(2,2)]
-        config1['mlp_hiddens'] = [1000,750,500]
+        config1['filter_size'] = [(5,5),(5,5),(5,5),(5,5)]
+        config1['num_filter'] = [32, 64, 128, 128]
+        config1['pooling_sizes'] = [(2,2),(2,2),(2,2),(2,2)]
+        config1['mlp_hiddens'] = [1000,100]
         config1['output_size'] = 2
-        config1['batch_size'] = 64
+        config1['batch_size'] = 32
         config1['activation'] = [Rectifier() for _ in config1['num_filter']]
         config1['mlp_activation'] = [Rectifier().apply for _ in config1['mlp_hiddens']] + [Softmax().apply]
-
     else :
         config1['num_epochs'] = 100
         config1['num_channels'] = 3
@@ -71,7 +70,7 @@ def get_config(config):
         config1['mlp_activation'] = [Rectifier().apply for _ in config1['mlp_hiddens']] + [Softmax().apply]
         if config == 'test' :
             print("Test run...")
-            config1['test'] = None
+            config1['test'] = True
         else :
             print("Using default config..")
 
@@ -82,8 +81,8 @@ def build_and_run(label, config):
     #Define the parameters
     num_epochs, num_channels, image_shape, filter_size, num_filter, pooling_sizes, mlp_hiddens, output_size, batch_size, activation, mlp_activation  = config['num_epochs'], config['num_channels'], config['image_shape'], config['filter_size'], config['num_filter'], config['pooling_sizes'], config['mlp_hiddens'], config['output_size'], config['batch_size'], config['activation'], config['mlp_activation']
 #    print(num_epochs, num_channels, image_shape, filter_size, num_filter, pooling_sizes, mlp_hiddens, output_size, batch_size, activation, mlp_activation)
-    lambda_l1 = 0.0005
-    lambda_l2 = 0.005
+    lambda_l1 = 0.000025
+    lambda_l2 = 0.000025
 
     print("Building model")
     #Create the symbolics variable
@@ -102,7 +101,7 @@ def build_and_run(label, config):
                     in enumerate(conv_parameters)),
                   (activation),
             (MaxPooling(size, name='pool_{}'.format(i)) for i, size in enumerate(pooling_sizes))]))
-            #(AveragePooling(size, name='pool_{}'.format(i)) for i, size in enumerate(pooling_sizes))]))
+        #    (AveragePooling(size, name='pool_{}'.format(i)) for i, size in enumerate(pooling_sizes))]))
 
     #Create the sequence
     conv_sequence = ConvolutionalSequence(conv_layers, num_channels, image_size=image_shape, weights_init=Uniform(width=0.2), biases_init=Constant(0.))
@@ -129,22 +128,22 @@ def build_and_run(label, config):
     cg = ComputationGraph([cost])
     weights = VariableFilter(roles=[WEIGHT])(cg.variables)
     biases = VariableFilter(roles=[BIAS])(cg.variables)
-   # l2_penalty_weights = T.sum([i*lambda_l2/len(weights) * (W ** 2).sum() for i,W in enumerate(weights)]) # Gradually increase penalty for layer
+  # # l2_penalty_weights = T.sum([i*lambda_l2/len(weights) * (W ** 2).sum() for i,W in enumerate(weights)]) # Gradually increase penalty for layer
     l2_penalty = T.sum([lambda_l2 * (W ** 2).sum() for i,W in enumerate(weights+biases)]) # Gradually increase penalty for layer
-    #l2_penalty_bias = T.sum([lambda_l2*(B **2).sum() for B in biases])
-    #l2_penalty = l2_penalty_weights + l2_penalty_bias
+  # # #l2_penalty_bias = T.sum([lambda_l2*(B **2).sum() for B in biases])
+  # # #l2_penalty = l2_penalty_weights + l2_penalty_bias
     l2_penalty.name = 'l2_penalty'
-#    l1_penalty = T.sum([lambda_l1*T.abs_(z).sum() for z in weights+biases])
-    l1_penalty_weights = T.sum([i*lambda_l1/len(weights) * T.abs_(W).sum() for i,W in enumerate(weights)]) # Gradually increase penalty for layer    
-    l1_penalty_biases = T.sum([lambda_l1 * T.abs_(B).sum() for B in biases])
-    l1_penalty = l1_penalty_biases + l1_penalty_weights
+    l1_penalty = T.sum([lambda_l1*T.abs_(z).sum() for z in weights+biases])
+  #  l1_penalty_weights = T.sum([i*lambda_l1/len(weights) * T.abs_(W).sum() for i,W in enumerate(weights)]) # Gradually increase penalty for layer    
+  #  l1_penalty_biases = T.sum([lambda_l1 * T.abs_(B).sum() for B in biases])
+  #  l1_penalty = l1_penalty_biases + l1_penalty_weights
     l1_penalty.name = 'l1_penalty'
     costreg = cost + l2_penalty + l1_penalty
     costreg.name = 'costreg'
     
     ########### DEFINE THE ALGORITHM #############
-#    algorithm = GradientDescent(cost=cost, parameters=cg.parameters, step_rule=Adam())
-    algorithm = GradientDescent(cost=costreg, parameters=cg.parameters, step_rule=Momentum())
+  #  algorithm = GradientDescent(cost=cost, parameters=cg.parameters, step_rule=Momentum())
+    algorithm = GradientDescent(cost=costreg, parameters=cg.parameters, step_rule=Adam())
 
     ########### GET THE DATA #####################
     istest = 'test' in config.keys()
@@ -159,22 +158,25 @@ def build_and_run(label, config):
     plot = Plot(label,
         channels=[['train_error_rate', 'valid_error_rate'],
                   ['valid_cost', 'valid_error_rate2'],
-                  ['train_error_rate2','train_total_gradient_norm','train_l2_penalty','train_l1_penalty']], after_epoch=True,server_url="http://hades.calculquebec.ca:5042")
+                 # ['train_costreg','train_grad_norm']], #  
+                 ['train_costreg','train_total_gradient_norm','train_l2_penalty','train_l1_penalty']],
+                  server_url="http://hades.calculquebec.ca:5042")  
+   
+    grad_norm = aggregation.mean(algorithm.total_gradient_norm)
+    grad_norm.name = 'grad_norm'
 
     extensions = [Timing(),
                   FinishAfter(after_n_epochs=num_epochs),
                   DataStreamMonitoring([cost, error_rate, error_rate2], valid_stream, prefix="valid"),
                   TrainingDataMonitoring([costreg, error_rate, error_rate2,
-                    aggregation.mean(algorithm.total_gradient_norm),l2_penalty,l1_penalty],
-                    prefix="train",
-                    after_epoch=True),
+                    grad_norm,l2_penalty,l1_penalty],
+                     prefix="train", after_epoch=True),
                   plot,
                   ProgressBar(),
                   Printing(),
                   TrackTheBest('valid_error_rate',min), #Keep best
                   checkpoint,  #Save best
                   FinishIfNoImprovementAfter('valid_error_rate_best_so_far', epochs=5)] # Early-stopping                  
-
     model = Model(cost)
     main_loop = MainLoop(algorithm,data_stream=train_stream,model=model,extensions=extensions)
     main_loop.run()
@@ -190,8 +192,9 @@ if __name__ == '__main__' :
         label = 'default'
     elif '--test' in sys.argv:
         config = get_config("test")
-        label = 'test'
+        label = '_'.join(sys.argv[1:])
     else :        
         config = get_config(sys.argv[1])
         label = '_'.join(sys.argv[1:])        
+    print(label)
     build_and_run(label,config)

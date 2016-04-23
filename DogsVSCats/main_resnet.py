@@ -83,25 +83,24 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     input_var = T.tensor4('image_features')
     #target_value = T.ivector('targets')
     target_var = T.lmatrix('targets')
-    #target_vec = T.extra_ops.to_one_hot(target_var[:,0],2)
+    target_vec = T.extra_ops.to_one_hot(target_var[:,0],2)
     #target_var = T.matrix('targets')
     # Create residual net model
     print("Building model...")
     network = build_cnn(input_var, image_size, n, num_blockstack, num_filters)
     get_info(network)
     prediction = lasagne.utils.as_theano_expression(lasagne.layers.get_output(network))
-    print(prediction)
     test_prediction = lasagne.utils.as_theano_expression(lasagne.layers.get_output(network,deterministic=True))
 
     # Loss function -> The objective to minimize 
     print("Instanciation of loss function...")
  
-    loss = CategoricalCrossEntropy().apply(target_var.flatten(), prediction)
-    test_loss = CategoricalCrossEntropy().apply(target_var.flatten(), test_prediction)
+    #loss = CategoricalCrossEntropy().apply(target_var.flatten(), prediction)
+    #test_loss = CategoricalCrossEntropy().apply(target_var.flatten(), test_prediction)
  #   loss = lasagne.objectives.categorical_crossentropy(prediction, target_var.flatten()).mean()
   #  test_loss = lasagne.objectives.categorical_crossentropy(test_prediction, target_var.flatten()).mean()
-    #loss = lasagne.objectives.squared_error(prediction,target_vec).mean()
-    #test_loss = lasagne.objectives.squared_error(test_prediction,target_vec).mean()
+    loss = lasagne.objectives.squared_error(prediction,target_vec).mean()
+    test_loss = lasagne.objectives.squared_error(test_prediction,target_vec).mean()
   #  loss = tensor.nnet.binary_crossentropy(prediction, target_var).mean()
   #  test_loss = tensor.nnet.binary_crossentropy(test_prediction, target_var).mean()
     test_loss.name = "loss"
@@ -111,12 +110,12 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     layers = lasagne.layers.get_all_layers(network)
 
     #l1 and l2 regularization
-    pondlayers = {x:0.01 for x in layers}
-    l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
-    l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/4:], lasagne.regularization.l1) * 1e-4
-    reg_penalty = l1_penality + l2_penality
-    reg_penalty.name = 'reg_penalty'
-    loss = loss + reg_penalty
+    #pondlayers = {x:0.000025 for i,x in enumerate(layers)}
+    #l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
+    #l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/4:], lasagne.regularization.l1) * 25e-6
+    #reg_penalty = l1_penality + l2_penality
+    #reg_penalty.name = 'reg_penalty'
+    #loss = loss + reg_penalty
     loss.name = 'reg_loss'
     error_rate = MisclassificationRate().apply(target_var.flatten(), test_prediction).copy(
             name='error_rate')
@@ -148,7 +147,10 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     grad_norm.name = "grad_norm"
 
     print("Initializing extensions...")
-    plot = Plot(save_to, channels=[['train_loss','valid_loss'], ['train_grad_norm','train_reg_penalty'],['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042')    
+    plot = Plot(save_to, channels=[['train_loss','valid_loss'], 
+['train_grad_norm'],
+#['train_grad_norm','train_reg_penalty'],
+['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042')    
 
     checkpoint = Checkpoint('models/best_'+save_to+'.tar')
   #  checkpoint.add_condition(['after_n_batches=25'],
@@ -160,7 +162,8 @@ def build_and_run(save_to,modelconfig,experimentconfig):
     extensions = [Timing(),
                   FinishAfter(after_n_epochs=experimentconfig['num_epochs'],
                               after_n_batches=experimentconfig['num_batches']),
-                  TrainingDataMonitoring([test_loss, error_rate, grad_norm, reg_penalty], prefix="train", after_epoch=True), #after_n_epochs=1
+                  TrainingDataMonitoring([test_loss, error_rate, grad_norm], # reg_penalty],
+                  prefix="train", after_epoch=True), #after_n_epochs=1
                   DataStreamMonitoring([test_loss, error_rate],valid_stream,prefix="valid", after_epoch=True), #after_n_epochs=1
                   plot,
                   #Checkpoint(save_to,after_n_epochs=5),
