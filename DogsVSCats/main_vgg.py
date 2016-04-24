@@ -51,15 +51,15 @@ def build_and_run(experimentconfig, modelconfig, save_to=None): #modelconfig,
  #   test_loss = lasagne.objectives.squared_error(test_prediction,target_vec)
     loss = loss.mean()
 
-    layers = network.values()  
+   # layers = network.values()  
     #l1 and l2 regularization
-    pondlayers = {x:0.01 for x in layers}
-    l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
-    l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/4:], lasagne.regularization.l1) * 1e-4
-    reg_penalty = l1_penality + l2_penality
-    reg_penalty.name = 'reg_penalty'
-    loss = loss + reg_penalty
-    loss.name = 'reg_loss'
+   # pondlayers = {x:0.01 for x in layers}
+   # l1_penality = lasagne.regularization.regularize_layer_params_weighted(pondlayers, lasagne.regularization.l2)
+   # l2_penality = lasagne.regularization.regularize_layer_params(layers[len(layers)/4:], lasagne.regularization.l1) * 1e-4
+   # reg_penalty = l1_penality + l2_penality
+   # reg_penalty.name = 'reg_penalty'
+    #loss = loss + reg_penalty
+    loss.name = 'loss'
 
     error_rate = MisclassificationRate().apply(target_var.flatten(), prediction).copy(
             name='error_rate')
@@ -87,7 +87,7 @@ def build_and_run(experimentconfig, modelconfig, save_to=None): #modelconfig,
     grad_norm.name='grad_norm'   
 
     print("Initializing extensions...")
-    plot = Plot(save_to, channels=[['train_loss','valid_loss'], ['train_grad_norm','train_reg_penalty'],['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042')    
+    plot = Plot(save_to, channels=[['train_loss','valid_loss','train_grad_norm'],['train_error_rate','valid_error_rate']], server_url='http://hades.calculquebec.ca:5042')    
     checkpoint = Checkpoint('models/best_'+save_to+'.tar')
   #  checkpoint.add_condition(['after_n_batches=25'],
     checkpoint.add_condition(['after_epoch'],
@@ -119,4 +119,4 @@ def build_and_run(experimentconfig, modelconfig, save_to=None): #modelconfig,
 
     main_loop.run()
 
-build_and_run(get_expr_config('default'), vgg16.get_model("small"),save_to='test_vgg')
+build_and_run(get_expr_config('default'), vgg16.get_model("small"),save_to='vgg')
