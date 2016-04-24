@@ -1,7 +1,8 @@
+
 def get_stream(batch_size, input_size, test=False):
     from fuel.datasets.dogs_vs_cats import DogsVsCats
     from fuel.streams import DataStream
-    from fuel.schemes import ShuffledScheme
+    from fuel.schemes import ShuffledScheme, SequentialScheme ,SequentialExampleScheme
     from fuel.transformers.image import RandomFixedSizeCrop
     from fuel.transformers import Flatten #, ForceFloatX
     from ScikitResize import ScikitResize
@@ -27,7 +28,8 @@ def get_stream(batch_size, input_size, test=False):
     )
     test_stream = DataStream.default_stream(
         test,
-        iteration_scheme=ShuffledScheme(test.num_examples, batch_size)
+        iteration_scheme=SequentialScheme(test.num_examples, 1)
+#        iteration_scheme=SequentialExampleScheme(test.num_examples)
     )
     #Reshaping procedure
     #Apply crop and resize to desired square shape
